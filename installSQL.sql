@@ -1,0 +1,6 @@
+CREATE TABLE player_diseases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    player_id INT NOT NULL,
+    disease VARCHAR(255) NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
