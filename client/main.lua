@@ -9,16 +9,22 @@ end
 local animTimers = {}
 local isFalling = false
 
+function DebugPrint(...)
+    if Config.DebugMode then
+        print(...)
+    end
+end
+
 function LoadAnimDict(dict)
-    print("Intentando cargar el diccionario de animaciones: " .. dict)
+    DebugPrint("Intentando cargar el diccionario de animaciones: " .. dict)
     RequestAnimDict(dict)
     while not HasAnimDictLoaded(dict) do
         Citizen.Wait(100)
     end
-    print("Diccionario de animaciones cargado: " .. dict)
+    DebugPrint("Diccionario de animaciones cargado: " .. dict)
 end
 
-local playerInjured = false 
+local playerInjured = false
 local disease = nil
 
 local function GetRandomDisease()
@@ -34,7 +40,7 @@ local function StartContagionTimer(playerId)
         Citizen.Wait(60000)
 
         if playerInjured and disease then
-            print('Jugador infectado con ' .. disease)
+            DebugPrint('Jugador infectado con ' .. disease)
             TriggerServerEvent('infectarJugador', disease)
             disease = nil
         end
@@ -46,7 +52,7 @@ AddEventHandler('gameEventTriggered', function(event, args)
         local playerPed = PlayerPedId()
         if args[1] == playerPed then
             playerInjured = true
-            print('Jugador dañado')
+            DebugPrint('Jugador dañado')
             disease = GetRandomDisease()
             StartContagionTimer(PlayerId())
         end
@@ -56,7 +62,7 @@ end)
 AddEventHandler('playerSpawned', function()
     playerInjured = false
     disease = nil
-    print('Jugador reapareció, estado de lesión reiniciado')
+    DebugPrint('Jugador reapareció, estado de lesión reiniciado')
 end)
 
 -- Citizen.CreateThread(function()
@@ -95,24 +101,26 @@ AddEventHandler('ApplySymptoms', function(disease)
             local playerPed = PlayerPedId()
             local particleDictionary = "cut_bigscr"
             local particleName = "cs_bigscr_beer_spray"
-    
+
             RequestNamedPtfxAsset(particleDictionary)
-    
+
             while not HasNamedPtfxAssetLoaded(particleDictionary) do
                 Citizen.Wait(1)
             end
-    
+
             SetPtfxAssetNextCall(particleDictionary)
             local bone = GetPedBoneIndex(playerPed, 47495)
-            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone, 1.0, false, false, false)
+            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone,
+                1.0, false, false, false)
             Citizen.Wait(1000)
-            local effect2 = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone, 1.0, false, false, false)
+            local effect2 = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0,
+                bone, 1.0, false, false, false)
             Citizen.Wait(3500)
             StopParticleFxLooped(effect, 0)
             StopParticleFxLooped(effect2, 0)
         end
-    end    
-    
+    end
+
     for animName, animData in pairs(animaciones) do
         if not animTimers[animName] then
             animTimers[animName] = true
@@ -177,13 +185,13 @@ AddEventHandler('ApplySymptoms', function(disease)
                 local randomWaitTime = math.random(30000, 120000)
                 Citizen.Wait(30000)
 
-                print("Deteniendo efectos por " .. (randomWaitTime / 1000) .. " segundos.")
+                DebugPrint("Deteniendo efectos por " .. (randomWaitTime / 1000) .. " segundos.")
                 TriggerEvent('RemoveAllEffects')
 
                 Citizen.Wait(randomWaitTime)
 
                 if playerDiseases[disease] then
-                    print("Reiniciando efectos.")
+                    DebugPrint("Reiniciando efectos.")
                     for _, symptom in ipairs(symptoms) do
                         if symptom == "cansancio" then
                             SetRunSprintMultiplierForPlayer(PlayerId(), 0.8)
@@ -219,4 +227,31 @@ AddEventHandler('RemoveAllEffects', function()
     StopGameplayCamShaking(true)
 
     playerDiseases = {}
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        local randomWaitTime = math.random(60 * 60000, 120 * 60000)
+        Citizen.Wait(randomWaitTime)
+
+        if not playerInjured then
+            local disease = GetRandomDisease()
+            DebugPrint("El jugador ha contraído la enfermedad: " .. disease)
+            TriggerEvent('ApplySymptoms', disease)
+        end
+    end
+end)
+
+RegisterNetEvent('PlayCureAnimation')
+AddEventHandler('PlayCureAnimation', function()
+    local playerPed = PlayerPedId()
+    RequestAnimDict("mp_suicide")
+
+    while not HasAnimDictLoaded("mp_suicide") do
+        Citizen.Wait(100)
+    end
+
+    TaskPlayAnim(playerPed, "mp_suicide", "pill", 8.0, -8.0, 3000, 49, 0, false, false, false)
+
+    Citizen.Wait(3000)
 end)

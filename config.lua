@@ -1,136 +1,139 @@
 Config = {}
 
--- Configuración de las enfermedades
+Config.InmuneJobs = {
+    "ambulance"
+}
+
+-- Disease settings
 Config.Enfermedades = {
-    ["gripe"] = {
-        symptoms = {"cansancio", "vision_borrosa"},
-        duration = 600,
-        contagio = 0.8,
-        rangoContagio = 10.0,
-        cureItem = "medicina_gripe",
+    ["gripe"] = {  -- Flu
+        symptoms = {"cansancio", "vision_borrosa"},  -- Fatigue, blurry vision
+        duration = 600,  -- Duration in seconds
+        contagio = 0.8,  -- Contagion rate (80%)
+        rangoContagio = 10.0,  -- Contagion range
+        cureItem = "medicina_gripe",  -- Cure item
         animaciones = {
-            ["tos"] = {
+            ["tos"] = {  -- Cough animation
                 dict = "timetable@gardener@smoking_joint",
                 anim = "idle_cough",
                 delay = 20,
             }
         },
-        efectos = {
-            movimiento_lento = true,
-            debilitado = true,
+        efectos = {  -- Effects on player
+            movimiento_lento = true,  -- Slow movement
+            debilitado = true,  -- Weakened
         }
     },
-    ["fiebre"] = {
-        symptoms = {"calor_extremo", "cansancio"},
-        duration = 900,
-        contagio = 0.6,
-        rangoContagio = 8.0,
-        cureItem = "medicina_fiebre",
+    ["fiebre"] = {  -- Fever
+        symptoms = {"calor_extremo", "cansancio"},  -- Extreme heat, fatigue
+        duration = 900,  -- Duration in seconds
+        contagio = 0.6,  -- Contagion rate (60%)
+        rangoContagio = 8.0,  -- Contagion range
+        cureItem = "medicina_fiebre",  -- Cure item
         animaciones = {
-            ["calor_extremo"] = {
+            ["calor_extremo"] = {  -- Extreme heat animation
                 dict = "move_m@drunk@verydrunk",
                 anim = "idle",
                 delay = 30,
             }
         },
-        efectos = {
-            tambaleo = true,
-            caida_involuntaria = true,
+        efectos = {  -- Effects on player
+            tambaleo = true,  -- Stumbling
+            caida_involuntaria = true,  -- Involuntary fall
         }
     },
-    ["dolor_cabeza"] = {
-        symptoms = {"vision_borrosa", "mareo"},
-        duration = 300,
-        contagio = 0.5,
-        rangoContagio = 5.0,
-        cureItem = "analgesico",
+    ["dolor_cabeza"] = {  -- Headache
+        symptoms = {"vision_borrosa", "mareo"},  -- Blurry vision, dizziness
+        duration = 300,  -- Duration in seconds
+        contagio = 0.5,  -- Contagion rate (50%)
+        rangoContagio = 5.0,  -- Contagion range
+        cureItem = "analgesico",  -- Cure item
         animaciones = {
-            ["mareo"] = {
+            ["mareo"] = {  -- Dizziness animation
                 dict = "missfam5_yoga",
                 anim = "f_getup_lamar",
                 delay = 25,
             }
         },
-        efectos = {
-            vision_borrosa = true,
+        efectos = {  -- Effects on player
+            vision_borrosa = true,  -- Blurry vision
         }
     },
-    ["insomnio"] = {
-        symptoms = {"cansancio", "irritabilidad"},
-        duration = 1200,
-        contagio = 0.8,
-        rangoContagio = 10.0,
-        cureItem = "medicina_insomnio",
+    ["insomnio"] = {  -- Insomnia
+        symptoms = {"cansancio", "irritabilidad"},  -- Fatigue, irritability
+        duration = 1200,  -- Duration in seconds
+        contagio = 0.8,  -- Contagion rate (80%)
+        rangoContagio = 10.0,  -- Contagion range
+        cureItem = "medicina_insomnio",  -- Cure item
         animaciones = {
-            ["despertar"] = {
+            ["despertar"] = {  -- Waking up animation
                 dict = "move_m@crazy",
                 anim = "walk",
                 delay = 60,
             }
         },
-        efectos = {
-            movimiento_lento = true,
+        efectos = {  -- Effects on player
+            movimiento_lento = true,  -- Slow movement
         }
     },
-    ["nauseas"] = {
-        symptoms = {"mareo", "vomito"},
-        duration = 800,
-        contagio = 0.8,
-        rangoContagio = 10.0,
-        cureItem = "medicina_nauseas",
+    ["nauseas"] = {  -- Nausea
+        symptoms = {"mareo", "vomito"},  -- Dizziness, vomiting
+        duration = 800,  -- Duration in seconds
+        contagio = 0.8,  -- Contagion rate (80%)
+        rangoContagio = 10.0,  -- Contagion range
+        cureItem = "medicina_nauseas",  -- Cure item
         animaciones = {
-            ["vomito"] = {
+            ["vomito"] = {  -- Vomiting animation
                 dict = "missheistpaletoscore1leadinout",
                 anim = "trv_puking_leadout",
                 delay = 45,
             }
         },
-        efectos = {
-            tambaleo = true,
+        efectos = {  -- Effects on player
+            tambaleo = true,  -- Stumbling
         }
     },
-    ["migrana"] = {
-        symptoms = {"dolor_cabeza", "vision_borrosa"},
-        duration = 600,
-        contagio = 0.0,
-        rangoContagio = 0.0,
-        cureItem = "medicina_migrana",
+    ["migrana"] = {  -- Migraine
+        symptoms = {"dolor_cabeza", "vision_borrosa"},  -- Headache, blurry vision
+        duration = 600,  -- Duration in seconds
+        contagio = 0.0,  -- Contagion rate (0%)
+        rangoContagio = 0.0,  -- No contagion
+        cureItem = "medicina_migrana",  -- Cure item
         animaciones = {
-            ["dolor_cabeza"] = {
+            ["dolor_cabeza"] = {  -- Headache animation
                 dict = "missfam5_yoga",
                 anim = "f_getup_lamar",
                 delay = 30,
             }
         },
-        efectos = {
-            vision_borrosa = true,
-            debilitado = true,
-            tambaleo = true,
-            caida_involuntaria = true,
+        efectos = {  -- Effects on player
+            vision_borrosa = true,  -- Blurry vision
+            debilitado = true,  -- Weakened
+            tambaleo = true,  -- Stumbling
+            caida_involuntaria = true,  -- Involuntary fall
         }
     },
-    ["resfriado"] = {
-        symptoms = {"tos", "estornudos"},
-        duration = 600,
-        contagio = 0.8,
-        rangoContagio = 10.0,
-        cureItem = "medicina_resfriado",
+    ["resfriado"] = {  -- Cold
+        symptoms = {"tos", "estornudos"},  -- Coughing, sneezing
+        duration = 600,  -- Duration in seconds
+        contagio = 0.8,  -- Contagion rate (80%)
+        rangoContagio = 10.0,  -- Contagion range
+        cureItem = "medicina_resfriado",  -- Cure item
         animaciones = {
-            ["estornudar"] = {
+            ["estornudar"] = {  -- Sneezing animation
                 dict = "timetable@gardener@smoking_joint",
                 anim = "idle_cough",
                 delay = 20,
             }
         },
-        efectos = {
-            debilitado = true,
+        efectos = {  -- Effects on player
+            debilitado = true,  -- Weakened
         }
     },
 }
 
--- Tiempo de espera en segundos antes de verificar el contagio
-Config.TiempoChequeoContagio = 5
-
-Config.FrameWork = 'esx'
-Config.AutoRunSQL = true
-Config.AutoVersionChecker = true
+Config.TiempoChequeoContagio = 5  -- Time in seconds before checking for contagion
+Config.FrameWork = 'esx'  -- Framework being used (esx or qb)
+Config.AutoRunSQL = true  -- Automatically runs the necessary SQL
+Config.AutoVersionChecker = true  -- Automatically check for updates
+Config.DebugMode = false  -- Debug mode (false = off)
