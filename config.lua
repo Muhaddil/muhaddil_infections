@@ -1,10 +1,26 @@
 Config = {}
 
+Config.AdminGroups = { "god", "admin", "mod" } -- Only ESX
+
 Config.InmuneJobs = {
     "ambulance"
 }
 
+Config.ContagionTimer = 1
+Config.MinWaitTimeMinutes = 60 -- In minutes
+Config.MaxWaitTimeMinutes = 120 -- In minutes
+
+Config.SymptomsDurations = {
+    diarrea = 15000, -- 15 seconds
+    vomito = 15000, -- 15 seconds
+}
+
+Config.EffectDuration = 30  -- Duration (in seconds) for which the disease effects last before stopping
+Config.RandomTimeMin = 30   -- Minimum time (in seconds) for which the disease effects stop
+Config.RandomTimeMax = 120  -- Maximum time (in seconds) for which the disease effects stop
+
 -- Disease settings
+-- Valid symptoms: "cansancio", "vision_borrosa", "calor_extremo", "mareo", "irritabilidad", "vomito", "diarrea", "dolor_cabeza", "estornudos"
 Config.Enfermedades = {
     ["gripe"] = {  -- Flu
         symptoms = {"cansancio", "vision_borrosa"},  -- Fatigue, blurry vision
@@ -13,11 +29,11 @@ Config.Enfermedades = {
         rangoContagio = 10.0,  -- Contagion range
         cureItem = "medicina_gripe",  -- Cure item
         animaciones = {
-            ["tos"] = {  -- Cough animation
-                dict = "timetable@gardener@smoking_joint",
-                anim = "idle_cough",
-                delay = 20,
-            }
+            -- ["tos"] = {  -- Cough animation
+            --     dict = "timetable@gardener@smoking_joint",
+            --     anim = "idle_cough",
+            --     delay = 20,
+            -- }
         },
         efectos = {  -- Effects on player
             movimiento_lento = true,  -- Slow movement
@@ -133,7 +149,8 @@ Config.Enfermedades = {
 }
 
 Config.TiempoChequeoContagio = 5  -- Time in seconds before checking for contagion
-Config.FrameWork = 'esx'  -- Framework being used (esx or qb)
+Config.FrameWork = 'auto'  -- Framework being used (auto, esx or qb)
 Config.AutoRunSQL = true  -- Automatically runs the necessary SQL
 Config.AutoVersionChecker = true  -- Automatically check for updates
-Config.DebugMode = false  -- Debug mode (false = off)
+Config.DebugMode = true  -- Debug mode (false = off)
+Config.UseOXNotifications = true -- If the script uses the ox_libs notifications or framework ones
