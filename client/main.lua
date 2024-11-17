@@ -61,7 +61,7 @@ function LoadAnimDict(dict)
     while not HasAnimDictLoaded(dict) do
         Citizen.Wait(100)
     end
-    DebugPrint("Diccionario de animaciones cargado: " .. dict)
+    DebugPrint(locale('loadedanimdict') ..dict)
 end
 
 local playerInjured = false
@@ -80,7 +80,7 @@ local function StartContagionTimer(playerId)
         Citizen.Wait(Config.ContagionTimer)
 
         if playerInjured and disease then
-            DebugPrint('Jugador infectado con ' .. disease)
+            DebugPrint(locale('infectedwith') .. disease)
             TriggerServerEvent('infectarJugador', disease)
             disease = nil
         end
@@ -102,7 +102,6 @@ end)
 AddEventHandler('playerSpawned', function()
     playerInjured = false
     disease = nil
-    DebugPrint('Jugador reapareció, estado de lesión reiniciado')
 end)
 
 -- Citizen.CreateThread(function()
@@ -285,10 +284,80 @@ AddEventHandler('ApplySymptoms', function(disease)
                             SetRunSprintMultiplierForPlayer(PlayerId(), 0.8)
                         elseif symptom == "vision_borrosa" then
                             StartScreenEffect("DrugsMichaelAliensFightIn", 0, true)
+                        elseif symptom == "dolor_cabeza" then
+                            StartScreenEffect("RampageOut", 0, true)
+                        elseif symptom == 'irritabilidad' then
+                            -- StartScreenEffect("ExplosionJosh3", 10, true)
+                            -- StartScreenEffect("DrugsDrivingIn", 10, true)
+                            StartScreenEffect("LostTimeDay", 10, true)
                         elseif symptom == "calor_extremo" then
                             StartScreenEffect("MP_job_load", 0, true)
                         elseif symptom == "mareo" then
                             StartScreenEffect("DrugsDrivingOut", 0, true)
+                        elseif symptom == "estornudos" then
+                            local playerPed = PlayerPedId()
+                            local particleDictionary = "cut_bigscr"
+                            local particleName = "cs_bigscr_beer_spray"
+                            RequestNamedPtfxAsset(particleDictionary)
+                            while not HasNamedPtfxAssetLoaded(particleDictionary) do
+                                Citizen.Wait(1)
+                            end
+                            SetPtfxAssetNextCall(particleDictionary)
+                            local bone = GetPedBoneIndex(playerPed, 47495)
+                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone,
+                                1.0, false, false, false)
+                            Citizen.Wait(1000)
+                            local effect2 = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0,
+                                bone, 1.0, false, false, false)
+                            Citizen.Wait(3500)
+                            StopParticleFxLooped(effect, 0)
+                            StopParticleFxLooped(effect2, 0)
+                        elseif symptom == "diarrea" then
+                            local playerPed = PlayerPedId()
+                            local particleDictionary = "scr_amb_chop"
+                            local particleName = "ent_anim_dog_poo"
+                            local animDict = "missfbi3ig_0"
+                            local animName = "shit_react_trev"
+                            RequestAnimDict(animDict)
+                            while not HasAnimDictLoaded(animDict) do
+                                Citizen.Wait(1)
+                            end
+                            TaskPlayAnim(playerPed, animDict, animName, 8.0, -8.0, -1, 1, 0, false, false, false)
+                            RequestNamedPtfxAsset(particleDictionary)
+                            while not HasNamedPtfxAssetLoaded(particleDictionary) do
+                                Citizen.Wait(1)
+                            end
+                            SetPtfxAssetNextCall(particleDictionary)
+                            local bone = GetPedBoneIndex(playerPed, 11816)
+                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, 0.0, 0.0, -0.2, -90.0, 0.0, 0.0, bone,
+                                1.0, false, false, false)
+                            Citizen.Wait(Config.SymptomsDurations["diarrea"])
+                            StopParticleFxLooped(effect, 0)
+                            RemoveAnimDict(animDict)
+                            ClearPedTasksImmediately(PlayerPedId())
+                        elseif symptom == "vomito" then
+                            local playerPed = PlayerPedId()
+                            local particleDictionary = "cut_paletoscore"
+                            local particleName = "cs_paleto_vomit"
+                            local animDict = "missheistpaletoscore1leadinout"
+                            local animName = "trv_puking_leadout"
+                            RequestAnimDict(animDict)
+                            while not HasAnimDictLoaded(animDict) do
+                                Citizen.Wait(1)
+                            end
+                            TaskPlayAnim(playerPed, animDict, animName, 8.0, -8.0, -1, 49, 0, false, false, false)
+                            RequestNamedPtfxAsset(particleDictionary)
+                            while not HasNamedPtfxAssetLoaded(particleDictionary) do
+                                Citizen.Wait(1)
+                            end
+                            SetPtfxAssetNextCall(particleDictionary)
+                            local bone = GetPedBoneIndex(playerPed, 47495)
+                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone,
+                                1.0, false, false, false)
+                            Citizen.Wait(Config.SymptomsDurations["vomito"])
+                            StopParticleFxLooped(effect, 0)
+                            RemoveAnimDict(animDict)
+                            ClearPedTasksImmediately(PlayerPedId())
                         end
                     end
                 end
@@ -302,6 +371,10 @@ AddEventHandler('RemoveAllEffects', function()
     StopAllScreenEffects()
     SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
     ResetPedMovementClipset(PlayerPedId(), 1.0)
+    local playerPed = PlayerPedId()
+    if IsPedInAnyVehicle(playerPed, false) then
+        return
+    end
     ClearPedTasksImmediately(PlayerPedId())
     for animName, _ in pairs(animTimers) do
         if DoesEntityExist(PlayerPedId()) then

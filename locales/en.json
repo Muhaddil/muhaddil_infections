@@ -8,7 +8,9 @@
     "cure_error": "No tienes la medicina correcta o no estás enfermo.",
     "infection_error": "Esa enfermedad no existe.",
     "no_permission": "No tienes permiso para usar este comando.",
-    "no_disease_to_cure": "No tienes enfermedades que curar.",
-    "system": "Sistema"
+    "system": "Sistema",
+    "cure_usage_message": "Has usado %s y te has curado.",
+    "cure_error_message": "No estás enfermo o el ítem no es correcto.",
+    "cure_all_message": "Te has curado de todas tus enfermedades.",
+    "no_disease_to_cure": "No tienes enfermedades que curar."
 }
-  

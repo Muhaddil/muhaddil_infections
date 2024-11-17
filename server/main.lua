@@ -14,6 +14,8 @@ else
     print('===NO SUPPORTED FRAMEWORK FOUND===')
 end
 
+lib.locale()
+
 function DebugPrint(...)
     if Config.DebugMode then
         print(...)
@@ -76,7 +78,6 @@ end
 lib.callback.register('checkPlayerImmune', function(playerId)
     local job = nil
 
-    -- Verificar el framework y obtener el trabajo del jugador
     if Config.FrameWork == "esx" then
         local xPlayer = ESX.GetPlayerFromId(playerId)
         job = xPlayer.job.name
@@ -85,27 +86,28 @@ lib.callback.register('checkPlayerImmune', function(playerId)
         job = Player.PlayerData.job.name
     end
 
-    -- Comprobar si el trabajo del jugador es inmune
     for _, immuneJob in ipairs(Config.InmuneJobs) do
         if job == immuneJob then
-            return true  -- Si está inmune, devolvemos true
+            return true
         end
     end
 
-    return false  -- Si no está inmune, devolvemos false
+    return false
 end)
 
 function InfectPlayer(playerId, disease)
     if playerDiseases[playerId] then
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-            "Ya estás infectado con " .. playerDiseases[playerId], 3000, 'info')
+        local message = locale('infection_already', playerDiseases[playerId])
+        local title = locale('system')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
         return
     end
 
     playerDiseases[playerId] = disease
     SavePlayerDisease(playerId, disease)
-    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema', "Has sido infectado con " .. disease,
-        3000, 'info')
+    local message = locale('infection_message', disease)
+    local title = locale('system')
+    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
 
     TriggerClientEvent('ApplySymptoms', playerId, disease)
 
@@ -143,7 +145,9 @@ function CurePlayer(playerId)
     end
     playerDiseases[playerId] = nil
     TriggerClientEvent('RemoveAllEffects', playerId)
-    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema', 'Te has curado.', 3000, 'info')
+    local message = locale('cure_message')
+    local title = locale('system')
+    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
 end
 
 exports("CurePlayer", CurePlayer)
@@ -151,53 +155,55 @@ exports("CurePlayer", CurePlayer)
 if Config.FrameWork == 'esx' then
     RegisterCommand('infectar', function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
-
+    
         if xPlayer then
             local playerGroup = xPlayer.getGroup()
-
+    
             if table.contains(Config.AdminGroups, playerGroup) then
                 local playerId = source
                 local disease = args[1]
-
+                local title = locale('system')
+    
                 if Config.Enfermedades[disease] then
                     InfectPlayer(playerId, disease)
-                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-                        'Has sido infectado con la enfermedad: ' .. disease, 3000, 'info')
+                    local message = locale('infection_message', disease)
+                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
                 else
-                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-                        'Esa enfermedad no existe.', 3000, 'error')
+                    local message = locale('infection_error')
+                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
                 end
             else
-                TriggerClientEvent('muhaddil_infections:SendNotification', source, 'Sistema',
-                    'No tienes permiso para usar este comando.', 3000, 'error')
+                local message = locale('no_permission')
+                TriggerClientEvent('muhaddil_infections:SendNotification', source, title, message, 3000, 'error')
             end
         else
             print("Error: No se pudo obtener el objeto xPlayer.")
         end
     end, false)
-
+    
     RegisterCommand('curar', function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
-
+    
         if xPlayer then
             local playerGroup = xPlayer.getGroup()
-
+    
             if table.contains(Config.AdminGroups, playerGroup) then
                 local playerId = source
                 local item = args[1]
                 local disease = playerDiseases[playerId]
+                local title = locale('system')
 
                 if disease and item == Config.Enfermedades[disease].cureItem then
                     CurePlayer(playerId)
-                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-                        'Has sido curado de todas tus enfermedades.', 3000, 'info')
+                    local message = locale('cure_message')
+                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
                 else
-                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-                        'No tienes la medicina correcta o no estás enfermo.', 3000, 'error')
+                    local message = locale('cure_error')
+                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
                 end
             else
-                TriggerClientEvent('muhaddil_infections:SendNotification', source, 'Sistema',
-                    'No tienes permiso para usar este comando.', 3000, 'error')
+                local message = locale('no_permission')
+                TriggerClientEvent('muhaddil_infections:SendNotification', source, title, message, 3000, 'error')
             end
         else
             print("Error: No se pudo obtener el objeto xPlayer.")
@@ -236,17 +242,19 @@ function HandleCureUsage(playerId, cureItem)
         end
     end
 
+    local title = locale('system')
+
     if disease and playerDiseases[playerId] == disease then
         TriggerClientEvent('PlayCureAnimation', playerId)
 
         Citizen.Wait(3000)
 
         CurePlayer(playerId)
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-            'Has usado ' .. cureItem .. ' y te has curado.', 3000, 'info')
+        local message = locale('cure_usage_message', cureItem)
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
     else
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
-            'No estás enfermo o el item no es correcto.', 3000, 'error')
+        local message = locale('cure_error_message')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
     end
 end
 
@@ -262,6 +270,8 @@ exports('CureAllDiseases', function(playerId)
         playerId = source
     end
 
+    local title = locale('system')
+
     if playerDiseases[playerId] then
         CurePlayer(playerId)
 
@@ -269,11 +279,11 @@ exports('CureAllDiseases', function(playerId)
         
         Citizen.Wait(3000)
         
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema', 
-            'Has sido curado de todas tus enfermedades.', 3000, 'info')
+        local message = locale('cure_all_message')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
     else
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema', 
-            'No tienes enfermedades que curar.', 3000, 'error')
+        local message = locale('no_disease_to_cure')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
     end
 end)
 
