@@ -9,6 +9,7 @@ Config.InmuneJobs = {
 Config.ContagionTimer = 1
 Config.MinWaitTimeMinutes = 60 -- In minutes
 Config.MaxWaitTimeMinutes = 120 -- In minutes
+Config.WaterTime = 30 -- Time needed in seconds to be infected by cold from being in the water
 
 Config.SymptomsDurations = {
     diarrea = 15000, -- 15 seconds

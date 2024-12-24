@@ -18,6 +18,10 @@ local animTimers = {}
 local playerDiseases = {}
 local isFalling = false
 local diseaseName = nil
+local playerInjured = false
+local disease = nil
+local tiempoEnAgua = 0
+local enAgua = false
 
 function DebugPrint(...)
     if Config.DebugMode then
@@ -64,9 +68,6 @@ function LoadAnimDict(dict)
     DebugPrint(locale('loadedanimdict') ..dict)
 end
 
-local playerInjured = false
-local disease = nil
-
 local function GetRandomDisease()
     local diseases = {}
     for key, _ in pairs(Config.Enfermedades) do
@@ -74,6 +75,31 @@ local function GetRandomDisease()
     end
     return diseases[math.random(#diseases)]
 end
+
+function EstaEnAgua()
+    local playerPed = PlayerPedId()
+    return IsEntityInWater(playerPed)
+end
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(1000)
+
+        if EstaEnAgua() then
+            tiempoEnAgua = tiempoEnAgua + 1
+            enAgua = true
+        else
+            tiempoEnAgua = 0
+            enAgua = false
+        end
+
+        if tiempoEnAgua >= Config.WaterTime and enAgua then
+            local enfermedad = GetRandomDisease()
+            TriggerServerEvent('infectarJugador', enfermedad)
+            tiempoEnAgua = 0
+        end
+    end
+end)
 
 local function StartContagionTimer(playerId)
     Citizen.CreateThread(function()
