@@ -25,15 +25,33 @@ end
 local playerDiseases = {}
 
 function LoadPlayerDiseases(playerId)
-    MySQL.Async.fetchAll('SELECT disease FROM player_diseases WHERE player_id = @playerId', {
-        ['@playerId'] = playerId
-    }, function(results)
-        for _, result in ipairs(results) do
-            playerDiseases[playerId] = result.disease
-            TriggerClientEvent('ApplySymptoms', playerId, result.disease)
-            DebugPrint("Cargada la enfermedad: " .. result.disease.. " para el jugador "..playerId)
+    local identifier = nil
+
+    if Config.FrameWork == "esx" then
+        local Player = ESX.GetPlayerFromId(playerId)
+        if Player then
+            identifier = Player.getIdentifier()
         end
-    end)
+    elseif Config.FrameWork == "qb" then
+        local Player = QBCore.Functions.GetPlayer(playerId)
+        if Player then
+            identifier = Player.PlayerData.license
+        end
+    end
+
+    if identifier then
+        MySQL.Async.fetchAll('SELECT disease FROM player_diseases WHERE player_id = @playerId', {
+            ['@playerId'] = identifier
+        }, function(results)
+            for _, result in ipairs(results) do
+                playerDiseases[identifier] = result.disease
+                TriggerClientEvent('ApplySymptoms', playerId, result.disease)
+                DebugPrint("Cargada la enfermedad: " .. result.disease .. " para el jugador " .. playerId)
+            end
+        end)
+    else
+        DebugPrint("No se pudo obtener el identificador para el jugador " .. playerId)
+    end
 end
 
 if GetResourceState('es_extended') == 'started' then
@@ -53,27 +71,57 @@ end
 exports("LoadPlayerDiseases", LoadPlayerDiseases)
 
 function SavePlayerDisease(playerId, disease)
-    MySQL.Async.execute('INSERT INTO player_diseases (player_id, disease) VALUES (@playerId, @disease)', {
-        ['@playerId'] = playerId,
-        ['@disease'] = disease
-    })
+    local identifier = nil
+
+    if Config.FrameWork == "esx" then
+        local Player = ESX.GetPlayerFromId(playerId)
+        if Player then
+            identifier = Player.getIdentifier()
+        end
+    elseif Config.FrameWork == "qb" then
+        local Player = QBCore.Functions.GetPlayer(playerId)
+        if Player then
+            identifier = Player.PlayerData.license
+        end
+    end
+
+    if identifier then
+        MySQL.Async.execute('INSERT INTO player_diseases (player_id, disease) VALUES (@playerId, @disease)', {
+            ['@playerId'] = identifier,
+            ['@disease'] = disease
+        })
+    else
+        DebugPrint("No se pudo obtener el identificador para el jugador " .. playerId)
+    end
 end
 
 exports("SavePlayerDisease", SavePlayerDisease)
 
 function RemovePlayerDisease(playerId)
-    MySQL.Async.execute('DELETE FROM player_diseases WHERE player_id = @playerId', {
-        ['@playerId'] = playerId
-    })
+    local identifier = nil
+
+    if Config.FrameWork == "esx" then
+        local Player = ESX.GetPlayerFromId(playerId)
+        if Player then
+            identifier = Player.getIdentifier()
+        end
+    elseif Config.FrameWork == "qb" then
+        local Player = QBCore.Functions.GetPlayer(playerId)
+        if Player then
+            identifier = Player.PlayerData.license
+        end
+    end
+
+    if identifier then
+        MySQL.Async.execute('DELETE FROM player_diseases WHERE player_id = @playerId', {
+            ['@playerId'] = identifier
+        })
+    else
+        DebugPrint("No se pudo obtener el identificador para el jugador " .. playerId)
+    end
 end
 
 exports("RemovePlayerDisease", RemovePlayerDisease)
-
-if Config.FrameWork == "esx" then
-    ESX = exports['es_extended']:getSharedObject()
-elseif Config.FrameWork == "qb" then
-    QBCore = exports['qb-core']:GetCoreObject()
-end
 
 lib.callback.register('checkPlayerImmune', function(playerId)
     local job = nil
