@@ -484,13 +484,17 @@ end)
 
 RegisterNetEvent('cureAllDiseases')
 AddEventHandler('cureAllDiseases', function(PlayerId)
-    CureAllDiseases(PlayerId)
+    exports['muhaddil_infections']:CureAllDiseases(PlayerId)
 end)
 
-function CureAllDiseases(PlayerId)
-    TriggerServerEvent('muhaddil_infections:CureAllDiseases', PlayerId)
-end
+exports('CureAllDiseases', function(playerId)
+    TriggerServerEvent('muhaddil_infections:CureAllDiseases', playerId)
+end)
 
-exports("CureAllDiseases", CureAllDiseases)
+-- function CureAllDiseases(PlayerId)
+--     TriggerServerEvent('muhaddil_infections:CureAllDiseases', PlayerId)
+-- end
+
+-- exports("CureAllDiseases", CureAllDiseases)
 -- exports['muhaddil_infections']:CureAllDiseases(playerId)
 -- exports['muhaddil_infections']:CureAllDiseases()
