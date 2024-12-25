@@ -30,6 +30,10 @@ function DebugPrint(...)
 end
 
 function SendNotification(msgtitle, msg, time, type)
+    if not Config.ShowNotifications then
+        return
+    end
+
     if Config.UseOXNotifications then
         lib.notify({
             title = msgtitle,
@@ -60,21 +64,35 @@ AddEventHandler("muhaddil_infections:SendNotification", function(msgtitle, msg, 
 end)
 
 function LoadAnimDict(dict)
-    DebugPrint(locale('loadinganimdictionary') ..dict)
+    DebugPrint(locale('loadinganimdictionary') .. dict)
     RequestAnimDict(dict)
     while not HasAnimDictLoaded(dict) do
         Citizen.Wait(100)
     end
-    DebugPrint(locale('loadedanimdict') ..dict)
+    DebugPrint(locale('loadedanimdict') .. dict)
 end
+
+local excludedDiseases = {
+    ["rotura de pierna"] = true,
+}
 
 local function GetRandomDisease()
     local diseases = {}
+    exclusions = excludedDiseases or {}
+
     for key, _ in pairs(Config.Enfermedades) do
-        table.insert(diseases, key)
+        if not exclusions[key] then
+            table.insert(diseases, key)
+        end
     end
+
+    if #diseases == 0 then
+        return nil
+    end
+
     return diseases[math.random(#diseases)]
 end
+
 
 function EstaEnAgua()
     local playerPed = PlayerPedId()
@@ -83,10 +101,14 @@ end
 
 Citizen.CreateThread(function()
     while true do
+        local playerId = PlayerId()
         Citizen.Wait(1000)
 
+        DebugPrint(EstaEnAgua())
+        DebugPrint('Tiempo en agua: ' .. tiempoEnAgua)
+
         if EstaEnAgua() then
-            tiempoEnAgua = tiempoEnAgua + 1
+            tiempoEnAgua = tiempoEnAgua + 10
             enAgua = true
         else
             tiempoEnAgua = 0
@@ -95,7 +117,9 @@ Citizen.CreateThread(function()
 
         if tiempoEnAgua >= Config.WaterTime and enAgua then
             local enfermedad = GetRandomDisease()
-            TriggerServerEvent('infectarJugador', enfermedad)
+            DebugPrint("Enfermedad seleccionada: " .. enfermedad)
+            DebugPrint("Infectando al jugador con ID: " .. GetPlayerServerId(playerId))
+            TriggerServerEvent('infectarJugador', GetPlayerServerId(playerId), enfermedad)
             tiempoEnAgua = 0
         end
     end
@@ -103,11 +127,11 @@ end)
 
 local function StartContagionTimer(playerId)
     Citizen.CreateThread(function()
-        Citizen.Wait(Config.ContagionTimer)
+        Citizen.Wait(Config.ContagionTimer * 1000)
 
         if playerInjured and disease then
             DebugPrint(locale('infectedwith') .. disease)
-            TriggerServerEvent('infectarJugador', disease)
+            TriggerServerEvent('infectarJugador', GetPlayerServerId(playerId), disease)
             disease = nil
         end
     end)
@@ -119,7 +143,7 @@ AddEventHandler('gameEventTriggered', function(event, args)
         if args[1] == playerPed then
             playerInjured = true
             DebugPrint('Jugador dañado')
-            disease = GetRandomDisease()
+            disease = 'rotura de pierna'
             StartContagionTimer(PlayerId())
         end
     end
@@ -276,7 +300,7 @@ AddEventHandler('ApplySymptoms', function(disease)
         if efectos.caida_involuntaria then
             Citizen.CreateThread(function()
                 while playerDiseases[disease] do
-                    if math.random() < 0.1 then
+                    if math.random() < 0.3 then
                         if not isFalling then
                             isFalling = true
                             ShakeGameplayCam("DRUNK_SHAKE", 1.0)
@@ -330,10 +354,12 @@ AddEventHandler('ApplySymptoms', function(disease)
                             end
                             SetPtfxAssetNextCall(particleDictionary)
                             local bone = GetPedBoneIndex(playerPed, 47495)
-                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone,
+                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0,
+                                0.0, 20.0, bone,
                                 1.0, false, false, false)
                             Citizen.Wait(1000)
-                            local effect2 = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0,
+                            local effect2 = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0,
+                                0.0, 20.0,
                                 bone, 1.0, false, false, false)
                             Citizen.Wait(3500)
                             StopParticleFxLooped(effect, 0)
@@ -355,7 +381,8 @@ AddEventHandler('ApplySymptoms', function(disease)
                             end
                             SetPtfxAssetNextCall(particleDictionary)
                             local bone = GetPedBoneIndex(playerPed, 11816)
-                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, 0.0, 0.0, -0.2, -90.0, 0.0, 0.0, bone,
+                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, 0.0, 0.0, -0.2, -90.0,
+                                0.0, 0.0, bone,
                                 1.0, false, false, false)
                             Citizen.Wait(Config.SymptomsDurations["diarrea"])
                             StopParticleFxLooped(effect, 0)
@@ -378,7 +405,8 @@ AddEventHandler('ApplySymptoms', function(disease)
                             end
                             SetPtfxAssetNextCall(particleDictionary)
                             local bone = GetPedBoneIndex(playerPed, 47495)
-                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0, 0.0, 20.0, bone,
+                            local effect = StartParticleFxLoopedOnPedBone(particleName, playerPed, -0.1, 0.5, 0.5, -90.0,
+                                0.0, 20.0, bone,
                                 1.0, false, false, false)
                             Citizen.Wait(Config.SymptomsDurations["vomito"])
                             StopParticleFxLooped(effect, 0)
@@ -493,10 +521,12 @@ function CheckNearbyPlayers()
                     DebugPrint("Jugador " .. playerId .. " ya está infectado.")
                 end
             else
-                DebugPrint("Jugador " .. playerId .. " no está dentro del rango de contagio o no tiene la enfermedad activa.")
+                DebugPrint("Jugador " ..
+                    playerId .. " no está dentro del rango de contagio o no tiene la enfermedad activa.")
             end
         else
-            DebugPrint("El jugador con ID " .. playerId .. " es el jugador local (ID: " .. PlayerId() .. "), no se verificará.")
+            DebugPrint("El jugador con ID " ..
+                playerId .. " es el jugador local (ID: " .. PlayerId() .. "), no se verificará.")
         end
     end
 end

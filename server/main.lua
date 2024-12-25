@@ -40,8 +40,8 @@ function LoadPlayerDiseases(playerId)
     end
 
     if identifier then
-        MySQL.Async.fetchAll('SELECT disease FROM player_diseases WHERE player_id = @playerId', {
-            ['@playerId'] = identifier
+        MySQL.Async.fetchAll('SELECT disease FROM player_diseases WHERE identifier = @identifier', {
+            ['@identifier'] = identifier
         }, function(results)
             for _, result in ipairs(results) do
                 playerDiseases[identifier] = result.disease
@@ -77,6 +77,7 @@ function SavePlayerDisease(playerId, disease)
         local Player = ESX.GetPlayerFromId(playerId)
         if Player then
             identifier = Player.getIdentifier()
+            DebugPrint("Identificador: " .. identifier)
         end
     elseif Config.FrameWork == "qb" then
         local Player = QBCore.Functions.GetPlayer(playerId)
@@ -85,17 +86,26 @@ function SavePlayerDisease(playerId, disease)
         end
     end
 
+    DebugPrint("Guardando enfermedad " .. disease .. " para el jugador " .. playerId)
+
     if identifier then
-        MySQL.Async.execute('INSERT INTO player_diseases (player_id, disease) VALUES (@playerId, @disease)', {
-            ['@playerId'] = identifier,
+        MySQL.Async.execute(
+        'INSERT INTO player_diseases (identifier, disease) VALUES (@identifier, @disease)', {
+            ['@identifier'] = identifier,
             ['@disease'] = disease
-        })
+        }, function(affectedRows)
+            if affectedRows > 0 then
+                DebugPrint("Inserción exitosa")
+            else
+                DebugPrint("Error en la inserción")
+            end
+        end)
     else
         DebugPrint("No se pudo obtener el identificador para el jugador " .. playerId)
     end
 end
 
-exports("SavePlayerDisease", SavePlayerDisease)
+exports("SavePlayerDiseases", SavePlayerDiseases)
 
 function RemovePlayerDisease(playerId)
     local identifier = nil
@@ -113,8 +123,8 @@ function RemovePlayerDisease(playerId)
     end
 
     if identifier then
-        MySQL.Async.execute('DELETE FROM player_diseases WHERE player_id = @playerId', {
-            ['@playerId'] = identifier
+        MySQL.Async.execute('DELETE FROM player_diseases WHERE identifier = @identifier', {
+            ['@identifier'] = identifier
         })
     else
         DebugPrint("No se pudo obtener el identificador para el jugador " .. playerId)
@@ -144,6 +154,8 @@ lib.callback.register('checkPlayerImmune', function(playerId)
 end)
 
 function InfectPlayer(playerId, disease)
+    DebugPrint("Infectando jugador " .. playerId .. " con " .. disease)
+    SavePlayerDisease(playerId, disease)
     if playerDiseases[playerId] then
         local message = locale('infection_already', playerDiseases[playerId])
         local title = locale('system')
@@ -152,17 +164,16 @@ function InfectPlayer(playerId, disease)
     end
 
     playerDiseases[playerId] = disease
-    SavePlayerDisease(playerId, disease)
     local message = locale('infection_message', disease)
     local title = locale('system')
     TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
 
     TriggerClientEvent('ApplySymptoms', playerId, disease)
 
-    Citizen.CreateThread(function()
-        Citizen.Wait(Config.Enfermedades[disease].duration * 1000)
-        CurePlayer(playerId)
-    end)
+    -- Citizen.CreateThread(function()
+    --     Citizen.Wait(Config.Enfermedades[disease].duration * 1000)
+    --     CurePlayer(playerId)
+    -- end)
 end
 
 exports("InfectPlayer", InfectPlayer)
@@ -171,19 +182,21 @@ exports("InfectPlayer", InfectPlayer)
 RegisterNetEvent('infectarJugador')
 AddEventHandler('infectarJugador', function(playerID, disease)
     local playerId = playerID or source
-    
+
     if not playerDiseases[playerId] then
         playerDiseases[playerId] = disease
         SavePlayerDisease(playerId, disease)
         TriggerClientEvent('ApplySymptoms', playerId, disease)
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema', "Has sido infectado con " .. disease, 3000, 'info')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
+            "Has sido infectado con " .. disease, 3000, 'info')
 
         Citizen.CreateThread(function()
             Citizen.Wait(Config.Enfermedades[disease].duration * 1000)
             CurePlayer(playerId)
         end)
     else
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema', "Ya estás infectado con " .. playerDiseases[playerId], 3000, 'info')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, 'Sistema',
+            "Ya estás infectado con " .. playerDiseases[playerId], 3000, 'info')
     end
 end)
 
@@ -203,15 +216,15 @@ exports("CurePlayer", CurePlayer)
 if Config.FrameWork == 'esx' then
     RegisterCommand('infectar', function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
-    
+
         if xPlayer then
             local playerGroup = xPlayer.getGroup()
-    
+
             if table.contains(Config.AdminGroups, playerGroup) then
                 local playerId = source
                 local disease = args[1]
                 local title = locale('system')
-    
+
                 if Config.Enfermedades[disease] then
                     InfectPlayer(playerId, disease)
                     local message = locale('infection_message', disease)
@@ -228,13 +241,13 @@ if Config.FrameWork == 'esx' then
             print("Error: No se pudo obtener el objeto xPlayer.")
         end
     end, false)
-    
+
     RegisterCommand('curar', function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
-    
+
         if xPlayer then
             local playerGroup = xPlayer.getGroup()
-    
+
             if table.contains(Config.AdminGroups, playerGroup) then
                 local playerId = source
                 local item = args[1]
@@ -313,7 +326,7 @@ for _, disease in pairs(Config.Enfermedades) do
     end
 end
 
-exports('CureAllDiseases', function(playerId)
+exports('CureAllDiseasesAnim', function(playerId)
     if not playerId then
         playerId = source
     end
@@ -324,9 +337,9 @@ exports('CureAllDiseases', function(playerId)
         CurePlayer(playerId)
 
         TriggerClientEvent('PlayCureAnimation', playerId)
-        
+
         Citizen.Wait(3000)
-        
+
         local message = locale('cure_all_message')
         TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
     else
@@ -334,6 +347,25 @@ exports('CureAllDiseases', function(playerId)
         TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
     end
 end)
+
+exports('CureAllDiseases', function(playerId)
+    if not playerId then
+        playerId = source
+    end
+
+    local title = locale('system')
+
+    if playerDiseases[playerId] then
+        CurePlayer(playerId)
+
+        local message = locale('cure_all_message')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
+    else
+        local message = locale('no_disease_to_cure')
+        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
+    end
+end)
+
 
 RegisterNetEvent('muhaddil_infections:CureAllDiseases')
 AddEventHandler('muhaddil_infections:CureAllDiseases', function(playerId)
