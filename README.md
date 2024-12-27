@@ -63,3 +63,5 @@ Each disease has the following customizable parameters:
 2. The disease lasts for the configured duration and may spread to nearby players based on the contagion rate and range.
 3. The player can cure the disease using the specified cure item, which will stop the symptoms and effects immediately.
 4. The system checks for contagion regularly based on the `TiempoChequeoContagio` setting.
+
+<img src="https://profile-counter.glitch.me/muhaddil_infections/count.svg" alt="Visitor Counter">
