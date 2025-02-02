@@ -1,15 +1,17 @@
 if Config.FrameWork == "auto" then
     if GetResourceState('es_extended') == 'started' then
         ESX = exports['es_extended']:getSharedObject()
-        Config.FrameWork = 'esx'
+        FrameWork = 'esx'
     elseif GetResourceState('qb-core') == 'started' then
         QBCore = exports['qb-core']:GetCoreObject()
-        Config.FrameWork = 'qb'
+        FrameWork = 'qb'
     end
 elseif Config.FrameWork == "esx" and GetResourceState('es_extended') == 'started' then
     ESX = exports['es_extended']:getSharedObject()
+    FrameWork = 'esx'
 elseif Config.FrameWork == "qb" and GetResourceState('qb-core') == 'started' then
     QBCore = exports['qb-core']:GetCoreObject()
+    FrameWork = 'qb'
 else
     print('===NO SUPPORTED FRAMEWORK FOUND===')
 end
@@ -28,11 +30,11 @@ AddEventHandler('onResourceStart', function(resourceName)
     if resourceName == GetCurrentResourceName() then
         Wait(5000)
 
-        if Config.FrameWork == "esx" then
+        if FrameWork == "esx" then
             for _, playerId in ipairs(GetPlayers()) do
                 LoadPlayerDiseases(playerId)
             end
-        elseif Config.FrameWork == "qb" then
+        elseif FrameWork == "qb" then
             for _, playerId in ipairs(QBCore.Functions.GetPlayers()) do
                 LoadPlayerDiseases(playerId)
             end
@@ -43,12 +45,12 @@ end)
 function LoadPlayerDiseases(playerId)
     local identifier = nil
 
-    if Config.FrameWork == "esx" then
+    if FrameWork == "esx" then
         local Player = ESX.GetPlayerFromId(playerId)
         if Player then
             identifier = Player.getIdentifier()
         end
-    elseif Config.FrameWork == "qb" then
+    elseif FrameWork == "qb" then
         local Player = QBCore.Functions.GetPlayer(playerId)
         if Player then
             identifier = Player.PlayerData.license
@@ -89,13 +91,13 @@ exports("LoadPlayerDiseases", LoadPlayerDiseases)
 function SavePlayerDisease(playerId, disease)
     local identifier = nil
 
-    if Config.FrameWork == "esx" then
+    if FrameWork == "esx" then
         local Player = ESX.GetPlayerFromId(playerId)
         if Player then
             identifier = Player.getIdentifier()
             DebugPrint("Identificador: " .. identifier)
         end
-    elseif Config.FrameWork == "qb" then
+    elseif FrameWork == "qb" then
         local Player = QBCore.Functions.GetPlayer(playerId)
         if Player then
             identifier = Player.PlayerData.license
@@ -126,12 +128,12 @@ exports("SavePlayerDiseases", SavePlayerDiseases)
 function RemovePlayerDisease(playerId)
     local identifier = nil
 
-    if Config.FrameWork == "esx" then
+    if FrameWork == "esx" then
         local Player = ESX.GetPlayerFromId(playerId)
         if Player then
             identifier = Player.getIdentifier()
         end
-    elseif Config.FrameWork == "qb" then
+    elseif FrameWork == "qb" then
         local Player = QBCore.Functions.GetPlayer(playerId)
         if Player then
             identifier = Player.PlayerData.license
@@ -152,10 +154,10 @@ exports("RemovePlayerDisease", RemovePlayerDisease)
 lib.callback.register('checkPlayerImmune', function(playerId)
     local job = nil
 
-    if Config.FrameWork == "esx" then
+    if FrameWork == "esx" then
         local xPlayer = ESX.GetPlayerFromId(playerId)
         job = xPlayer.job.name
-    elseif Config.FrameWork == "qb" then
+    elseif FrameWork == "qb" then
         local Player = QBCore.Functions.GetPlayer(playerId)
         job = Player.PlayerData.job.name
     end
@@ -229,7 +231,7 @@ end
 
 exports("CurePlayer", CurePlayer)
 
-if Config.FrameWork == 'esx' then
+if FrameWork == 'esx' then
     RegisterCommand('infectar', function(source, args, rawCommand)
         local xPlayer = ESX.GetPlayerFromId(source)
 
@@ -272,8 +274,6 @@ if Config.FrameWork == 'esx' then
 
                 if disease and item == Config.Enfermedades[disease].cureItem then
                     CurePlayer(playerId)
-                    local message = locale('cure_message')
-                    TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
                 else
                     local message = locale('cure_error')
                     TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
@@ -298,11 +298,11 @@ function table.contains(table, element)
 end
 
 function RegisterCureItem(cureItem)
-    if Config.FrameWork == "esx" then
+    if FrameWork == "esx" then
         ESX.RegisterUsableItem(cureItem, function(source)
             HandleCureUsage(source, cureItem)
         end)
-    elseif Config.FrameWork == "qb" then
+    elseif FrameWork == "qb" then
         QBCore.Functions.CreateUseableItem(cureItem, function(source)
             HandleCureUsage(source, cureItem)
         end)
@@ -356,11 +356,11 @@ exports('CureAllDiseasesAnim', function(playerId)
 
         Citizen.Wait(3000)
 
-        local message = locale('cure_all_message')
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
-    else
-        local message = locale('no_disease_to_cure')
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
+        -- local message = locale('cure_all_message')
+        -- TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
+    -- else
+    --     local message = locale('no_disease_to_cure')
+    --     TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
     end
 end)
 
@@ -374,23 +374,13 @@ exports('CureAllDiseases', function(playerId)
     if playerDiseases[playerId] then
         CurePlayer(playerId)
 
-        local message = locale('cure_all_message')
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
-    else
-        local message = locale('no_disease_to_cure')
-        TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
+        -- local message = locale('cure_all_message')
+        -- TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'info')
+    -- else
+    --     local message = locale('no_disease_to_cure')
+    --     TriggerClientEvent('muhaddil_infections:SendNotification', playerId, title, message, 3000, 'error')
     end
 end)
-
-if Config.FrameWork == 'esx' then
-    AddEventHandler('esx_ambulancejob:revive', function(source)
-        exports['muhaddil_infections']:CureAllDiseases(source)
-    end)
-elseif Config.FrameWork == 'qb' then
-    AddEventHandler('hospital:client:Revive', function(source)
-        exports['muhaddil_infections']:CureAllDiseases(source)
-    end)
-end 
 
 RegisterNetEvent('muhaddil_infections:CureAllDiseases')
 AddEventHandler('muhaddil_infections:CureAllDiseases', function(playerId)

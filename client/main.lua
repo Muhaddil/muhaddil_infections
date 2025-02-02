@@ -1,13 +1,17 @@
 if Config.FrameWork == "auto" then
     if GetResourceState('es_extended') == 'started' then
         ESX = exports['es_extended']:getSharedObject()
+        Framework = "esx"
     elseif GetResourceState('qb-core') == 'started' then
         QBCore = exports['qb-core']:GetCoreObject()
+        Framework = "qb"
     end
 elseif Config.FrameWork == "esx" and GetResourceState('es_extended') == 'started' then
     ESX = exports['es_extended']:getSharedObject()
+    Framework = "esx"
 elseif Config.FrameWork == "qb" and GetResourceState('qb-core') == 'started' then
     QBCore = exports['qb-core']:GetCoreObject()
+    Framework = "qb"
 else
     print('===NO SUPPORTED FRAMEWORK FOUND===')
 end
@@ -51,9 +55,9 @@ function SendNotification(msgtitle, msg, time, type)
             }
         })
     else
-        if Config.FrameWork == 'qb' then
+        if Framework == 'qb' then
             QBCore.Functions.Notify(msg, type, time)
-        elseif Config.FrameWork == 'esx' then
+        elseif Framework == 'esx' then
             TriggerEvent('esx:showNotification', msg, type, time)
         end
     end
@@ -646,10 +650,26 @@ exports('CureAllDiseases', function(playerId)
     alreadyInfected = false
 end)
 
+if Framework == 'esx' then
+    AddEventHandler('brutal_ambulancejob:revive', function()
+        local PlayerId = PlayerId()
+        local playerServerID = GetPlayerServerId(PlayerId)
+        exports['muhaddil_infections']:CureAllDiseases(playerServerID)
+        alreadyInfected = false
+    end)
+elseif Framework == 'qb' then
+    AddEventHandler('hospital:client:Revive', function()
+        local PlayerId = PlayerId()
+        local playerServerID = GetPlayerServerId(PlayerId)
+        exports['muhaddil_infections']:CureAllDiseases(playerServerID)
+        alreadyInfected = false
+    end)
+end 
+
 -- function CureAllDiseases(PlayerId)
 --     TriggerServerEvent('muhaddil_infections:CureAllDiseases', PlayerId)
 -- end
 
 -- exports("CureAllDiseases", CureAllDiseases)
--- exports['muhaddil_infections']:CureAllDiseases(playerId)
+-- exports['muhaddil_infections']:CureAllDiseases(playerId) -- ServerSide ID
 -- exports['muhaddil_infections']:CureAllDiseases()
