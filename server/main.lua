@@ -24,6 +24,22 @@ end
 
 local playerDiseases = {}
 
+AddEventHandler('onResourceStart', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        Wait(5000)
+
+        if Config.FrameWork == "esx" then
+            for _, playerId in ipairs(GetPlayers()) do
+                LoadPlayerDiseases(playerId)
+            end
+        elseif Config.FrameWork == "qb" then
+            for _, playerId in ipairs(QBCore.Functions.GetPlayers()) do
+                LoadPlayerDiseases(playerId)
+            end
+        end
+    end
+end)
+
 function LoadPlayerDiseases(playerId)
     local identifier = nil
 
@@ -366,11 +382,25 @@ exports('CureAllDiseases', function(playerId)
     end
 end)
 
+if Config.FrameWork == 'esx' then
+    AddEventHandler('esx_ambulancejob:revive', function(source)
+        exports['muhaddil_infections']:CureAllDiseases(source)
+    end)
+elseif Config.FrameWork == 'qb' then
+    AddEventHandler('hospital:client:Revive', function(source)
+        exports['muhaddil_infections']:CureAllDiseases(source)
+    end)
+end 
 
 RegisterNetEvent('muhaddil_infections:CureAllDiseases')
 AddEventHandler('muhaddil_infections:CureAllDiseases', function(playerId)
     exports['muhaddil_infections']:CureAllDiseases(playerId)
 end)
+
+RegisterCommand('curarAll', function (source, args, rawCommand)
+    exports['muhaddil_infections']:CureAllDiseases(source)
+    TriggerClientEvent('muhaddil_infections:SendNotification', source, '', 'Has sido curado de todas tus enfermedades', 3000, 'info')
+end, true)
 
 -- exports['muhaddil_infections']:CureAllDiseases(playerId)
 -- exports['muhaddil_infections']:CureAllDiseases()

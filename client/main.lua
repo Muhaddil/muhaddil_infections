@@ -22,6 +22,7 @@ local playerInjured = false
 local disease = nil
 local tiempoEnAgua = 0
 local enAgua = false
+local ContagionTimer = Config.ContagionTimer
 
 function DebugPrint(...)
     if Config.DebugMode then
@@ -73,7 +74,7 @@ function LoadAnimDict(dict)
 end
 
 local excludedDiseases = {
-    ["rotura de pierna"] = true,
+    ["rotura_de_pierna"] = true,
 }
 
 local function GetRandomDisease()
@@ -125,14 +126,78 @@ Citizen.CreateThread(function()
     end
 end)
 
+Bones = {
+    [31085] = 'HEAD',
+    [31086] = 'HEAD',
+    [39317] = 'HEAD',
+    [57597] = 'BODY',
+    [23553] = 'BODY',
+    [24816] = 'BODY',
+    [24817] = 'BODY',
+    [24818] = 'BODY',
+    [10706] = 'BODY',
+    [64729] = 'BODY',
+    [11816] = 'BODY',
+    [45509] = 'LARM',
+    [61163] = 'LARM',
+    [18905] = 'LARM',
+    [4089] = 'LARM',
+    [4090] = 'LARM',
+    [4137] = 'LARM',
+    [4138] = 'LARM',
+    [4153] = 'LARM',
+    [4154] = 'LARM',
+    [4169] = 'LARM',
+    [4170] = 'LARM',
+    [4185] = 'LARM',
+    [4186] = 'LARM',
+    [26610] = 'LARM',
+    [26611] = 'LARM',
+    [26612] = 'LARM',
+    [26613] = 'LARM',
+    [26614] = 'LARM',
+    [58271] = 'LLEG',
+    [63931] = 'LLEG',
+    [2108] = 'LLEG',
+    [14201] = 'LLEG',
+    [40269] = 'RARM',
+    [28252] = 'RARM',
+    [57005] = 'RARM',
+    [58866] = 'RARM',
+    [58867] = 'RARM',
+    [58868] = 'RARM',
+    [58869] = 'RARM',
+    [58870] = 'RARM',
+    [64016] = 'RARM',
+    [64017] = 'RARM',
+    [64064] = 'RARM',
+    [64065] = 'RARM',
+    [64080] = 'RARM',
+    [64081] = 'RARM',
+    [64096] = 'RARM',
+    [64097] = 'RARM',
+    [64112] = 'RARM',
+    [64113] = 'RARM',
+    [36864] = 'RLEG',
+    [51826] = 'RLEG',
+    [20781] = 'RLEG',
+    [52301] = 'RLEG',
+}
+
+local alreadyInfected = false
+
 local function StartContagionTimer(playerId)
+    if alreadyInfected then return end
+    alreadyInfected = true
+
     Citizen.CreateThread(function()
-        Citizen.Wait(Config.ContagionTimer * 1000)
+        Citizen.Wait(ContagionTimer * 1000)
 
         if playerInjured and disease then
             DebugPrint(locale('infectedwith') .. disease)
             TriggerServerEvent('infectarJugador', GetPlayerServerId(playerId), disease)
             disease = nil
+            ContagionTimer = Config.ContagionTimer
         end
     end)
 end
@@ -143,8 +208,23 @@ AddEventHandler('gameEventTriggered', function(event, args)
         if args[1] == playerPed then
             playerInjured = true
             DebugPrint('Jugador dañado')
-            disease = 'rotura de pierna'
-            StartContagionTimer(PlayerId())
+            local success, bone = GetPedLastDamageBone(playerPed)
+            if success then
+                if not alreadyInfected then
+                    BleedingCooldown = false
+
+                    if Bones[bone] == 'HEAD' or Bones[bone] == 'BODY' or Bones[bone] == 'LARM' or Bones[bone] == 'RARM' then
+                        disease = GetRandomDisease()
+                        StartContagionTimer(PlayerId())
+                    elseif Bones[bone] == 'LLEG' or Bones[bone] == 'RLEG' then
+                        disease = 'rotura de pierna'
+                        ContagionTimer = 0
+                        StartContagionTimer(PlayerId())
+                    end
+                else
+                    DebugPrint("El jugador ya está infectado, no se reinfectará.")
+                end
+            end    
         end
     end
 end)
@@ -152,6 +232,7 @@ end)
 AddEventHandler('playerSpawned', function()
     playerInjured = false
     disease = nil
+    alreadyInfected = false
 end)
 
 -- Citizen.CreateThread(function()
@@ -300,21 +381,34 @@ AddEventHandler('ApplySymptoms', function(disease)
         if efectos.caida_involuntaria then
             Citizen.CreateThread(function()
                 while playerDiseases[disease] do
-                    if math.random() < 0.3 then
-                        if not isFalling then
+                    local playerPed = PlayerPedId()
+        
+                    if not isFalling then
+                        local fallChance = 0.1
+        
+                        if IsPedSprinting(playerPed) then
+                            fallChance = 0.7
+                            DebugPrint('Sprinting')
+                        elseif IsPedRunning(playerPed) then
+                            fallChance = 0.4
+                            DebugPrint('Running')
+                        end
+        
+                        if math.random() < fallChance then
                             isFalling = true
                             ShakeGameplayCam("DRUNK_SHAKE", 1.0)
-                            SetPedToRagdoll(PlayerPedId(), 5000, 5000, 0, false, false, false)
-                            Citizen.Wait(10000)
+                            SetPedToRagdoll(playerPed, 3000, 3000, 0, false, false, false)
+                            Citizen.Wait(5000)
                             isFalling = false
                         end
                     end
-                    Citizen.Wait(10000)
+        
+                    Citizen.Wait(5000)
                 end
                 StopGameplayCamShaking(true)
             end)
         end
-
+        
         Citizen.CreateThread(function()
             while playerDiseases[disease] do
                 local minValue = Config.RandomTimeMin * 1000
@@ -322,10 +416,11 @@ AddEventHandler('ApplySymptoms', function(disease)
                 local randomWaitTime = math.random(minValue, maxValue)
                 Citizen.Wait(Config.EffectDuration * 1000)
 
-                DebugPrint("Deteniendo efectos por " .. (randomWaitTime / 1000) .. " segundos.")
-                TriggerEvent('RemoveAllEffects')
-
-                Citizen.Wait(randomWaitTime)
+                if not disease == excludedDiseases then
+                    DebugPrint("Deteniendo efectos por " .. (randomWaitTime / 1000) .. " segundos.")
+                    TriggerEvent('RemoveAllEffects')
+                    Citizen.Wait(randomWaitTime)
+                end
 
                 if playerDiseases[disease] then
                     DebugPrint("Reiniciando efectos.")
@@ -483,6 +578,8 @@ AddEventHandler('PlayCureAnimation', function()
         Citizen.Wait(100)
     end
 
+    alreadyInfected = false
+    
     TaskPlayAnim(playerPed, "mp_suicide", "pill", 8.0, -8.0, 3000, 49, 0, false, false, false)
 
     Citizen.Wait(3000)
@@ -541,10 +638,12 @@ end)
 RegisterNetEvent('cureAllDiseases')
 AddEventHandler('cureAllDiseases', function(PlayerId)
     exports['muhaddil_infections']:CureAllDiseases(PlayerId)
+    alreadyInfected = false
 end)
 
 exports('CureAllDiseases', function(playerId)
     TriggerServerEvent('muhaddil_infections:CureAllDiseases', playerId)
+    alreadyInfected = false
 end)
 
 -- function CureAllDiseases(PlayerId)
