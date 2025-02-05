@@ -25,6 +25,8 @@ function DebugPrint(...)
 end
 
 local playerDiseases = {}
+local addictionLevels = {}
+local addictionDecayTime = 300
 
 AddEventHandler('onResourceStart', function(resourceName)
     if resourceName == GetCurrentResourceName() then
@@ -394,3 +396,164 @@ end, true)
 
 -- exports['muhaddil_infections']:CureAllDiseases(playerId)
 -- exports['muhaddil_infections']:CureAllDiseases()
+
+local recoveryCooldowns = {}
+local treatmentProgress = {}
+
+-- Helper functions
+local function GetPlayer(source)
+    if FrameWork == 'qb' then
+        return QBCore.Functions.GetPlayer(source)
+    elseif FrameWork == 'esx' then
+        return ESX.GetPlayerFromId(source)
+    end
+    return nil
+end
+
+local function GetCitizenID(player)
+    if FrameWork == 'qb' then
+        return player.PlayerData.citizenid
+    elseif FrameWork == 'esx' then
+        return player.identifier
+    end
+    return nil
+end
+
+-- Obtener nivel de adicción
+exports('GetAddictionLevel', function(source, item)
+    local src = source
+    local Player = GetPlayer(src)
+    if not Player then return 0 end
+    
+    local citizenid = GetCitizenID(Player)
+    local result = MySQL.query.await('SELECT level FROM addictions WHERE citizenid = ? AND item = ?', {citizenid, item})
+    
+    return result[1] and result[1].level or 0
+end)
+
+-- Cargar adicciones al conectar
+RegisterNetEvent('addiction:load', function()
+    local src = source
+    local Player = GetPlayer(src)
+    if not Player then return end
+    
+    local citizenid = GetCitizenID(Player)
+    local addictions = {}
+    
+    local result = MySQL.query.await('SELECT item, level FROM addictions WHERE citizenid = ?', {citizenid})
+    for _, row in ipairs(result) do
+        addictions[row.item] = row.level
+    end
+    
+    TriggerClientEvent('addiction:update', src, addictions)
+end)
+
+-- Uso de ítem
+RegisterNetEvent('addiction:useItem', function(item)
+    local src = source
+    exports['muhaddil_infections']:IncreaseAddiction(src, item, 10)
+end)
+
+RegisterCommand('sumarAdiccion', function (source, args, rawCommand)
+    exports['muhaddil_infections']:IncreaseAddiction(source, args[1], tonumber(args[2]))
+end, true)
+
+-- Export para aumentar adicción
+exports('IncreaseAddiction', function(source, item, amount)
+    local Player = GetPlayer(source)
+    if not Player then return false end
+    
+    local citizenid = GetCitizenID(Player)
+    local currentLevel = exports['muhaddil_infections']:GetAddictionLevel(source, item)
+    local newLevel = math.min(currentLevel + (amount or 10), Config.AddictionRecovery.max_level)
+    
+    MySQL.insert('INSERT INTO addictions (citizenid, item, level) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE level = ?', {
+        citizenid, item, newLevel, newLevel
+    })
+    
+    TriggerClientEvent('addiction:update', source, exports['muhaddil_infections']:GetPlayerAddictions(citizenid))
+    return true
+end)
+
+-- Función de recuperación
+RegisterNetEvent('addiction:recover', function(item)
+    local src = source
+    local Player = GetPlayer(src)
+    if not Player then return end
+
+    local citizenid = GetCitizenID(Player)
+    local currentLevel = exports['addictions']:GetAddictionLevel(src, item)
+    
+    if citizenid == nil or currentLevel == 0 then
+        TriggerClientEvent('muhaddil_infections:SendNotification', src, '' , 'No tienes adicción a este ítem')
+        return
+    end
+
+    -- Verificar cooldown
+    if recoveryCooldowns[citizenid] and recoveryCooldowns[citizenid][item] then
+        if os.time() < recoveryCooldowns[citizenid][item] then
+            TriggerClientEvent('addiction:notify', src, 'Debes esperar '..GetCooldownText(recoveryCooldowns[citizenid][item])..' para otro tratamiento')
+            return
+        end
+    end
+
+    -- Calcular reducción progresiva
+    local reduction = CalculateProgressiveReduction(currentLevel)
+    local newLevel = math.max(currentLevel - reduction, 0)
+    
+    -- Actualizar progreso
+    treatmentProgress[citizenid] = treatmentProgress[citizenid] or {}
+    treatmentProgress[citizenid][item] = (treatmentProgress[citizenid][item] or 0) + reduction
+
+    -- Si se supera el 75% de reducción, reiniciar progreso
+    if treatmentProgress[citizenid][item] >= currentLevel * 0.75 then
+        newLevel = 0
+        treatmentProgress[citizenid][item] = nil
+        TriggerClientEvent('addiction:notify', src, '¡Desintoxicación completa!')
+    else
+        -- Actualizar base de datos
+        MySQL.update('UPDATE addictions SET level = ? WHERE citizenid = ? AND item = ?', 
+            {newLevel, citizenid, item})
+        
+        -- Establecer cooldown
+        SetCooldown(citizenid, item)
+        TriggerClientEvent('addiction:notify', src, string.format('Reducción de adicción: -%d%%, Nivel actual: %d', 
+            math.floor((reduction/currentLevel)*100), newLevel))
+    end
+
+    TriggerClientEvent('addiction:update', src, exports['addictions']:GetPlayerAddictions(citizenid))
+end)
+
+-- Función para calcular reducción progresiva
+function CalculateProgressiveReduction(currentLevel)
+    local cfg = Config.AddictionRecovery
+    local reduction = cfg.base_reduction * math.round(currentLevel / cfg.max_level, cfg.exponent) * currentLevel
+    return math.max(math.min(reduction, cfg.max_reduction), cfg.min_reduction)
+end
+
+-- Sistema de cooldown
+function SetCooldown(citizenid, item)
+    recoveryCooldowns[citizenid] = recoveryCooldowns[citizenid] or {}
+    recoveryCooldowns[citizenid][item] = os.time() + (Config.AddictionRecovery.cooldown * 60)
+end
+
+function GetCooldownText(cooldownTime)
+    local remaining = cooldownTime - os.time()
+    if remaining > 3600 then
+        return string.format("%d horas", math.floor(remaining/3600))
+    else
+        return string.format("%d minutos", math.ceil(remaining/60))
+    end
+end
+
+-- Obtener todas las adicciones
+exports('GetPlayerAddictions', function(citizenid)
+    local result = MySQL.query.await('SELECT item, level FROM addictions WHERE citizenid = ?', {citizenid})
+    local addictions = {}
+    
+    for _, row in ipairs(result) do
+        addictions[row.item] = row.level
+    end
+    
+    return addictions
+end)

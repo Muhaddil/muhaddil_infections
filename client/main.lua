@@ -673,3 +673,125 @@ end
 -- exports("CureAllDiseases", CureAllDiseases)
 -- exports['muhaddil_infections']:CureAllDiseases(playerId) -- ServerSide ID
 -- exports['muhaddil_infections']:CureAllDiseases()
+
+local activeEffects = {}
+local currentLevels = {}
+
+-- Función auxiliar para verificar si existe un elemento en una tabla
+local function contains(table, element)
+    for _, value in pairs(table) do
+        if value == element then
+            return true
+        end
+    end
+    return false
+end
+
+-- Actualizar efectos
+function UpdateEffects()
+    -- Limpiar efectos anteriores
+    for _, effect in pairs(activeEffects) do
+        if effect.type == 'timecycle' then
+            ClearTimecycleModifier()
+        elseif effect.type == 'shake' then
+            ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.0)
+        end
+    end
+    activeEffects = {}
+
+    -- Aplicar nuevos efectos
+    for item, level in pairs(currentLevels) do
+        local preset = GetPresetForItem(item)
+        if preset then
+            for _, effect in ipairs(preset.effects) do
+                if level >= effect.level then
+                    ApplyEffect(effect)
+                    table.insert(activeEffects, effect)
+                end
+            end
+        end
+    end
+end
+
+-- Aplicar efecto individual
+function ApplyEffect(effect)
+    Citizen.CreateThread(function()
+        while contains(activeEffects, effect) do
+            -- Efectos base
+            if effect.type == 'shake' then
+                ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', effect.intensity)
+            
+            elseif effect.type == 'timecycle' then
+                SetTimecycleModifier(effect.modifier)
+                SetTimecycleModifierStrength(1.0)
+            
+            elseif effect.type == 'movement' then
+                if not IsPedUsingAnyScenario(PlayerPedId()) then
+                    SetPedMovementClipset(PlayerPedId(), effect.clipset, 1.0)
+                end
+            
+            elseif effect.type == 'screenfx' then
+                AnimpostfxPlay(effect.effect, 0, true)
+                Citizen.Wait(3000)
+                AnimpostfxStop(effect.effect)
+            
+            elseif effect.type == 'blur' then
+                TriggerScreenblurFadeIn(1000)
+                Citizen.Wait(5000)
+                TriggerScreenblurFadeOut(1000)
+            
+            elseif effect.type == 'hallucinations' then
+                if math.random() < effect.chance then
+                    PlaySoundFrontend(-1, "Bed", "WastedSounds", true)
+                    Citizen.Wait(2000)
+                end
+            
+            elseif effect.type == 'heartbeat' then
+                StartScreenEffect('DeathFailMPDark', 0, true)
+                Citizen.Wait(1000)
+                StopScreenEffect('DeathFailMPDark')
+            
+            elseif effect.type == 'blackout' then
+                if math.random() < effect.chance then
+                    SetPedToRagdoll(PlayerPedId(), 5000, 5000, 0, true, true, false)
+                end
+            end
+            
+            Citizen.Wait(effect.interval or 1000)
+        end
+        
+        -- Limpiar efectos al salir
+        ClearTimecycleModifier()
+        ResetPedMovementClipset(PlayerPedId(), 0.25)
+        StopAllScreenEffects()
+    end)
+end
+
+-- Obtener preset para un ítem
+function GetPresetForItem(item)
+    for presetName, preset in pairs(Config.AddictionPresets) do
+        if contains(preset.items, item) then
+            return preset
+        end
+    end
+    return nil
+end
+
+-- Eventos
+RegisterNetEvent('addiction:update', function(levels)
+    currentLevels = levels
+    UpdateEffects()
+end)
+
+-- Inicialización
+Citizen.CreateThread(function()
+    while true do
+        TriggerServerEvent('addiction:load')
+        Citizen.Wait(1000 * 60 * 5) -- Sincronizar cada 5 minutos
+    end
+end)
+
+RegisterNetEvent('addiction:startTreatment')
+AddEventHandler('addiction:startTreatment', function(data)
+    TriggerServerEvent('addiction:recover', data.item)
+end)

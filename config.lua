@@ -169,3 +169,202 @@ Config.AutoVersionChecker = true -- Automatically check for updates
 Config.DebugMode = true          -- Debug mode (false = off)
 Config.UseOXNotifications = true -- If the script uses the ox_libs notifications or framework ones
 Config.ShowNotifications = true  -- Show notifications (false = off)
+
+
+Config.AddictionPresets = {
+    ['tabaco'] = {
+        items = {'cigarette', 'cigar', 'vape'},
+        effects = {
+            {
+                level = 20, 
+                type = 'shake', 
+                intensity = 0.1,
+                description = "Temblor leve en las manos"
+            },
+            {
+                level = 50, 
+                type = 'cough', 
+                chance = 0.3,
+                interval = 120,
+                description = "Ataques de tos ocasionales"
+            },
+            {
+                level = 80,
+                type = 'stamina',
+                modifier = 0.8,
+                description = "Dificultad para respirar"
+            }
+        }
+    },
+    ['alcohol'] = {
+        items = {'beer', 'whiskey', 'vodka'},
+        effects = {
+            {
+                level = 30,
+                type = 'blur',
+                intensity = 0.5,
+                description = "Visión ligeramente borrosa"
+            },
+            {
+                level = 60,
+                type = 'movement',
+                clipset = 'MOVE_M@DRUNK@VERYDRUNK',
+                description = "Movimiento ebrio"
+            },
+            {
+                level = 80,
+                type = 'timecycle',
+                modifier = 'Drunk',
+                description = "Efecto de borrachera intensa"
+            }
+        }
+    },
+    ['marihuana'] = {
+        items = {'weed', 'joint', 'edible'},
+        effects = {
+            {
+                level = 25,
+                type = 'timecycle',
+                modifier = 'drug_flying_01',
+                description = "Colores más vibrantes"
+            },
+            {
+                level = 50,
+                type = 'screenfx',
+                effect = 'DrugsMichaelAliensFight',
+                description = "Efectos visuales psicodélicos"
+            },
+            {
+                level = 75,
+                type = 'reaction',
+                modifier = 0.6,
+                description = "Reflejos disminuidos"
+            }
+        }
+    },
+    ['cocaina'] = {
+        items = {'coke', 'crack'},
+        effects = {
+            {
+                level = 20,
+                type = 'shake',
+                intensity = 0.3,
+                description = "Temblores intensos"
+            },
+            {
+                level = 45,
+                type = 'timecycle',
+                modifier = 'MP_Corona_switch',
+                description = "Visión hiper-enfocada"
+            },
+            {
+                level = 70,
+                type = 'heartbeat',
+                interval = 30,
+                description = "Palpitaciones cardíacas"
+            }
+        }
+    },
+    ['opioides'] = {
+        items = {'heroin', 'oxy', 'fentanyl'},
+        effects = {
+            {
+                level = 15,
+                type = 'timecycle',
+                modifier = 'DeathFailMPIn',
+                description = "Visión nublada"
+            },
+            {
+                level = 40,
+                type = 'movement',
+                clipset = 'move_heist_lester',
+                description = "Movimientos lentos"
+            },
+            {
+                level = 65,
+                type = 'hallucinations',
+                chance = 0.4,
+                description = "Alucinaciones auditivas"
+            }
+        }
+    },
+    ['estimulantes'] = {
+        items = {'meth', 'adderall'},
+        effects = {
+            {
+                level = 25,
+                type = 'shake',
+                intensity = 0.4,
+                description = "Temblor incontrolable"
+            },
+            {
+                level = 50,
+                type = 'speed',
+                modifier = 1.3,
+                description = "Movimiento acelerado"
+            },
+            {
+                level = 75,
+                type = 'screenfx',
+                effect = 'RaceTurbo',
+                description = "Efecto de velocidad extrema"
+            }
+        }
+    },
+    ['lsd'] = {
+        items = {'lsd', 'acid'},
+        effects = {
+            {
+                level = 20,
+                type = 'timecycle',
+                modifier = 'ArenaEMP',
+                description = "Distorsión cromática"
+            },
+            {
+                level = 50,
+                type = 'hallucinations',
+                chance = 0.6,
+                description = "Alucinaciones visuales"
+            },
+            {
+                level = 80,
+                type = 'screenfx',
+                effect = 'DMT_flight',
+                description = "Efecto psicodélico intenso"
+            }
+        }
+    },
+    ['benzodiacepinas'] = {
+        items = {'xanax', 'valium'},
+        effects = {
+            {
+                level = 30,
+                type = 'blur',
+                intensity = 0.7,
+                description = "Visión muy borrosa"
+            },
+            {
+                level = 60,
+                type = 'movement',
+                clipset = 'move_m@depressed@a',
+                description = "Movimientos letárgicos"
+            },
+            {
+                level = 90,
+                type = 'blackout',
+                chance = 0.2,
+                description = "Desmayos repentinos"
+            }
+        }
+    }
+}
+
+-- CONFIG.LUA (parte relevante)
+Config.AddictionRecovery = {
+    base_reduction = 0.15,       -- Reducción base por tratamiento (15%)
+    exponent = 1.8,              -- Dificultad exponencial
+    max_level = 100,             -- Nivel máximo de adicción
+    cooldown = 60,               -- Minutos entre tratamientos
+    min_reduction = 5,           -- Reducción mínima absoluta
+    max_reduction = 25           -- Reducción máxima absoluta
+}
