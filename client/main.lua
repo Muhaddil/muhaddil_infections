@@ -27,6 +27,12 @@ local disease = nil
 local tiempoEnAgua = 0
 local enAgua = false
 local ContagionTimer = Config.ContagionTimer
+local physicalEffects = {
+    activeMovements = {},
+    currentClipsets = {},
+}
+local activeEffects = {}
+local currentLevels = {}
 
 function DebugPrint(...)
     if Config.DebugMode then
@@ -228,7 +234,7 @@ AddEventHandler('gameEventTriggered', function(event, args)
                 else
                     DebugPrint("El jugador ya está infectado, no se reinfectará.")
                 end
-            end    
+            end
         end
     end
 end)
@@ -386,10 +392,10 @@ AddEventHandler('ApplySymptoms', function(disease)
             Citizen.CreateThread(function()
                 while playerDiseases[disease] do
                     local playerPed = PlayerPedId()
-        
+
                     if not isFalling then
                         local fallChance = 0.1
-        
+
                         if IsPedSprinting(playerPed) then
                             fallChance = 0.7
                             DebugPrint('Sprinting')
@@ -397,7 +403,7 @@ AddEventHandler('ApplySymptoms', function(disease)
                             fallChance = 0.4
                             DebugPrint('Running')
                         end
-        
+
                         if math.random() < fallChance then
                             isFalling = true
                             ShakeGameplayCam("DRUNK_SHAKE", 1.0)
@@ -406,13 +412,13 @@ AddEventHandler('ApplySymptoms', function(disease)
                             isFalling = false
                         end
                     end
-        
+
                     Citizen.Wait(5000)
                 end
                 StopGameplayCamShaking(true)
             end)
         end
-        
+
         Citizen.CreateThread(function()
             while playerDiseases[disease] do
                 local minValue = Config.RandomTimeMin * 1000
@@ -583,7 +589,7 @@ AddEventHandler('PlayCureAnimation', function()
     end
 
     alreadyInfected = false
-    
+
     TaskPlayAnim(playerPed, "mp_suicide", "pill", 8.0, -8.0, 3000, 49, 0, false, false, false)
 
     Citizen.Wait(3000)
@@ -664,7 +670,7 @@ elseif Framework == 'qb' then
         exports['muhaddil_infections']:CureAllDiseases(playerServerID)
         alreadyInfected = false
     end)
-end 
+end
 
 -- function CureAllDiseases(PlayerId)
 --     TriggerServerEvent('muhaddil_infections:CureAllDiseases', PlayerId)
@@ -674,124 +680,222 @@ end
 -- exports['muhaddil_infections']:CureAllDiseases(playerId) -- ServerSide ID
 -- exports['muhaddil_infections']:CureAllDiseases()
 
-local activeEffects = {}
-local currentLevels = {}
 
--- Función auxiliar para verificar si existe un elemento en una tabla
-local function contains(table, element)
-    for _, value in pairs(table) do
-        if value == element then
-            return true
+if Config.EnableAddictions then
+
+    local function contains(table, element)
+        for _, value in pairs(table) do
+            if value == element then
+                return true
+            end
+        end
+        return false
+    end
+
+    function UpdateEffects()
+        for i = #activeEffects, 1, -1 do
+            local effect = activeEffects[i]
+            if not IsEffectActiveForClipset(effect.clipset) then
+                table.remove(activeEffects, i)
+            end
+        end
+
+        for item, level in pairs(currentLevels) do
+            local preset = GetPresetForItem(item)
+            if preset then
+                for _, effect in ipairs(preset.effects) do
+                    if level >= effect.level then
+                        ApplyEffect(effect)
+                        ApplyPhysicalEffect(effect)
+                        table.insert(activeEffects, effect)
+                    end
+                end
+            end
         end
     end
-    return false
-end
 
--- Actualizar efectos
-function UpdateEffects()
-    -- Limpiar efectos anteriores
-    for _, effect in pairs(activeEffects) do
-        if effect.type == 'timecycle' then
+    function ApplyEffect(effect)
+        Citizen.CreateThread(function()
+            while contains(activeEffects, effect) do
+                if effect.type == 'shake' then
+                    ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', effect.intensity)
+                elseif effect.type == 'timecycle' then
+                    SetTimecycleModifier(effect.modifier)
+                    SetTimecycleModifierStrength(1.0)
+                elseif effect.type == 'movement' then
+                    if not IsPedUsingAnyScenario(PlayerPedId()) then
+                        SetPedMovementClipset(PlayerPedId(), effect.clipset, 1.0)
+                    end
+                elseif effect.type == 'screenfx' then
+                    AnimpostfxPlay(effect.effect, 0, true)
+                    Citizen.Wait(3000)
+                    AnimpostfxStop(effect.effect)
+                elseif effect.type == 'blur' then
+                    TriggerScreenblurFadeIn(1000)
+                    Citizen.Wait(5000)
+                    TriggerScreenblurFadeOut(1000)
+                elseif effect.type == 'hallucinations' then
+                    if math.random() < effect.chance then
+                        PlaySoundFrontend(-1, "Bed", "WastedSounds", true)
+                        Citizen.Wait(2000)
+                    end
+                elseif effect.type == 'heartbeat' then
+                    StartScreenEffect('DeathFailMPDark', 0, true)
+                    Citizen.Wait(1000)
+                    StopScreenEffect('DeathFailMPDark')
+                elseif effect.type == 'blackout' then
+                    if math.random() < effect.chance then
+                        SetPedToRagdoll(PlayerPedId(), 5000, 5000, 0, true, true, false)
+                    end
+                end
+
+                Citizen.Wait(effect.interval or 1000)
+            end
+
             ClearTimecycleModifier()
-        elseif effect.type == 'shake' then
-            ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.0)
-        end
+            ResetPedMovementClipset(PlayerPedId(), 0.25)
+            StopAllScreenEffects()
+        end)
     end
-    activeEffects = {}
 
-    -- Aplicar nuevos efectos
-    for item, level in pairs(currentLevels) do
-        local preset = GetPresetForItem(item)
-        if preset then
-            for _, effect in ipairs(preset.effects) do
-                if level >= effect.level then
-                    ApplyEffect(effect)
-                    table.insert(activeEffects, effect)
-                end
-            end
-        end
-    end
-end
+    function ApplyPhysicalEffect(effect)
+        local playerPed = PlayerPedId()
 
--- Aplicar efecto individual
-function ApplyEffect(effect)
-    Citizen.CreateThread(function()
-        while contains(activeEffects, effect) do
-            -- Efectos base
-            if effect.type == 'shake' then
-                ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', effect.intensity)
-            
-            elseif effect.type == 'timecycle' then
-                SetTimecycleModifier(effect.modifier)
-                SetTimecycleModifierStrength(1.0)
-            
-            elseif effect.type == 'movement' then
-                if not IsPedUsingAnyScenario(PlayerPedId()) then
-                    SetPedMovementClipset(PlayerPedId(), effect.clipset, 1.0)
-                end
-            
-            elseif effect.type == 'screenfx' then
-                AnimpostfxPlay(effect.effect, 0, true)
-                Citizen.Wait(3000)
-                AnimpostfxStop(effect.effect)
-            
-            elseif effect.type == 'blur' then
-                TriggerScreenblurFadeIn(1000)
-                Citizen.Wait(5000)
-                TriggerScreenblurFadeOut(1000)
-            
-            elseif effect.type == 'hallucinations' then
+        if effect.type == 'cough' then
+            Citizen.CreateThread(function()
                 if math.random() < effect.chance then
-                    PlaySoundFrontend(-1, "Bed", "WastedSounds", true)
-                    Citizen.Wait(2000)
+                    while effect.type == 'cough' do
+                        LoadAnimDict('timetable@gardener@smoking_joint')
+                        TaskPlayAnim(PlayerPedId(), 'timetable@gardener@smoking_joint', 'idle_cough', 8.0, -8.0, -1, 49,
+                            1,
+                            false, false, false)
+                        Citizen.Wait(6 * 1000)
+                        SetRunSprintMultiplierForPlayer(PlayerId(), 0.7)
+                    end
                 end
-            
-            elseif effect.type == 'heartbeat' then
+            end)
+
+        elseif effect.type == 'movement' then
+            if not physicalEffects.currentClipsets[effect.clipset] then
+                RequestAnimSet(effect.clipset)
+                while not HasAnimSetLoaded(effect.clipset) do
+                    Citizen.Wait(10)
+                end
+
+                SetPedMovementClipset(playerPed, effect.clipset, 1.0)
+                SetRunSprintMultiplierForPlayer(PlayerId(), effect.speedMultiplier or 1.0)
+                physicalEffects.currentClipsets[effect.clipset] = true
+            end
+
+        elseif effect.type == 'ragdoll' then
+            Citizen.CreateThread(function()
+                while effect.type == 'ragdoll' do
+                    if effect.triggerOnMovement and IsPedRunning(playerPed) or effect.triggerOnMovement and not IsPedRunning(playerPed) then
+                        if math.random() < effect.chance then
+                            SetPedToRagdoll(playerPed, 2000, 5000, 0, true, true, false)
+                            print('Ragdoll')
+                            Citizen.Wait(30 * 1000)
+                        end
+                    end
+                end
+            end)
+
+        elseif effect.type == 'blackout' then
+            if math.random() < effect.chance then
+                SetPedToRagdoll(playerPed, effect.duration, effect.duration, 0, true, true, false)
                 StartScreenEffect('DeathFailMPDark', 0, true)
-                Citizen.Wait(1000)
+                Citizen.Wait(effect.duration)
                 StopScreenEffect('DeathFailMPDark')
-            
-            elseif effect.type == 'blackout' then
-                if math.random() < effect.chance then
-                    SetPedToRagdoll(PlayerPedId(), 5000, 5000, 0, true, true, false)
-                end
             end
             
-            Citizen.Wait(effect.interval or 1000)
+        elseif effect.type == 'tremors' then
+            Citizen.CreateThread(function()
+                while effect.active do
+                    ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', effect.intensity)
+                    ApplyForceToEntity(playerPed, 1,
+                        math.random(-effect.intensity, effect.intensity),
+                        math.random(-effect.intensity, effect.intensity),
+                        0.0, 0.0, 0.0, 0.0, true, true, true, false, true)
+                    Citizen.Wait(effect.interval)
+                end
+            end)
         end
-        
-        -- Limpiar efectos al salir
-        ClearTimecycleModifier()
-        ResetPedMovementClipset(PlayerPedId(), 0.25)
-        StopAllScreenEffects()
+    end
+
+    Citizen.CreateThread(function()
+        while true do
+            Citizen.Wait(1000)
+
+            for clipset, _ in pairs(physicalEffects.currentClipsets) do
+                if not IsEffectActiveForClipset(clipset) then
+                    ResetPedMovementClipset(PlayerPedId(), 0.25)
+                    physicalEffects.currentClipsets[clipset] = nil
+                end
+            end
+
+            SetPlayerStamina(PlayerId(), 0.0)
+        end
     end)
-end
 
--- Obtener preset para un ítem
-function GetPresetForItem(item)
-    for presetName, preset in pairs(Config.AddictionPresets) do
-        if contains(preset.items, item) then
-            return preset
+    function IsEffectActiveForClipset(clipset)
+        for _, effect in pairs(activeEffects) do
+            if effect.type == 'movement' and effect.clipset == clipset then
+                return true
+            end
         end
+        return false
     end
-    return nil
+
+    function GetPresetForItem(item)
+        for presetName, preset in pairs(Config.AddictionPresets) do
+            if contains(preset.items, item) then
+                return preset
+            end
+        end
+        return nil
+    end
+
+    RegisterNetEvent('addiction:update', function(levels)
+        currentLevels = levels
+        UpdateEffects()
+    end)
+
+    Citizen.CreateThread(function()
+        while true do
+            TriggerServerEvent('addiction:load')
+            Citizen.Wait(1000 * 60)
+        end
+    end)
+
+    RegisterNetEvent('addiction:startTreatment')
+    AddEventHandler('addiction:startTreatment', function(data)
+        TriggerServerEvent('addiction:recover', data.item)
+    end)
+
+    exports('StopAllEffects', function()
+        StopAllEffects()
+    end)
+
+    function StopAllEffects()
+        activeEffects = {}
+
+        ResetPedMovementClipset(PlayerPedId(), 0.25)
+        physicalEffects = {
+            activeMovements = {},
+            currentClipsets = {},
+        }
+
+        ClearTimecycleModifier()
+        StopAllScreenEffects()
+
+        SetPlayerHealthRechargeMultiplier(PlayerId(), 1.0)
+        SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
+
+        ResetPedMovementClipset(PlayerPedId(), 0.25)
+    end
+
+    RegisterCommand('stopEffects', function(source, args, rawCommand)
+        exports['muhaddil_infections']:StopAllEffects()
+    end, false)
+
 end
-
--- Eventos
-RegisterNetEvent('addiction:update', function(levels)
-    currentLevels = levels
-    UpdateEffects()
-end)
-
--- Inicialización
-Citizen.CreateThread(function()
-    while true do
-        TriggerServerEvent('addiction:load')
-        Citizen.Wait(1000 * 60 * 5) -- Sincronizar cada 5 minutos
-    end
-end)
-
-RegisterNetEvent('addiction:startTreatment')
-AddEventHandler('addiction:startTreatment', function(data)
-    TriggerServerEvent('addiction:recover', data.item)
-end)

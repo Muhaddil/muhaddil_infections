@@ -164,12 +164,13 @@ Config.Enfermedades = {
 
 Config.TiempoChequeoContagio = 5 -- Time in seconds before checking for contagion
 Config.FrameWork = 'auto'        -- Framework being used (auto, esx or qb)
-Config.AutoRunSQL = true         -- Automatically runs the necessary SQL
+Config.AutoRunSQL = false        -- Automatically runs the necessary SQL
 Config.AutoVersionChecker = true -- Automatically check for updates
 Config.DebugMode = true          -- Debug mode (false = off)
 Config.UseOXNotifications = true -- If the script uses the ox_libs notifications or framework ones
 Config.ShowNotifications = true  -- Show notifications (false = off)
 
+Config.EnableAddictions = true -- Enable addiction system
 
 Config.AddictionPresets = {
     ['tabaco'] = {
@@ -177,14 +178,14 @@ Config.AddictionPresets = {
         effects = {
             {
                 level = 20, 
-                type = 'shake', 
-                intensity = 0.1,
+                type = 'shake',
+                intensity = 0.3,
                 description = "Temblor leve en las manos"
             },
             {
                 level = 50, 
                 type = 'cough', 
-                chance = 0.3,
+                chance = 1,
                 interval = 120,
                 description = "Ataques de tos ocasionales"
             },
@@ -239,6 +240,13 @@ Config.AddictionPresets = {
                 type = 'reaction',
                 modifier = 0.6,
                 description = "Reflejos disminuidos"
+            },
+            {
+                level = 75,
+                type = 'ragdoll',
+                triggerOnMovement = true,
+                chance = 2.2,
+                description = "Desmayos repentinos"
             }
         }
     },
@@ -262,6 +270,13 @@ Config.AddictionPresets = {
                 type = 'heartbeat',
                 interval = 30,
                 description = "Palpitaciones cardíacas"
+            },
+            {
+                level = 75,
+                type = 'ragdoll',
+                triggerOnMovement = true,
+                chance = 2.2,
+                description = "Desmayos repentinos"
             }
         }
     },
@@ -327,6 +342,12 @@ Config.AddictionPresets = {
                 description = "Alucinaciones visuales"
             },
             {
+                level = 60,
+                type = 'movement',
+                clipset = 'move_m@depressed@a',
+                description = "Movimientos letárgicos"
+            },
+            {
                 level = 80,
                 type = 'screenfx',
                 effect = 'DMT_flight',
@@ -359,7 +380,6 @@ Config.AddictionPresets = {
     }
 }
 
--- CONFIG.LUA (parte relevante)
 Config.AddictionRecovery = {
     base_reduction = 0.15,       -- Reducción base por tratamiento (15%)
     exponent = 1.8,              -- Dificultad exponencial

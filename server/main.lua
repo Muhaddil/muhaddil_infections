@@ -18,6 +18,24 @@ end
 
 lib.locale()
 
+local function GetPlayer(source)
+    if FrameWork == 'qb' then
+        return QBCore.Functions.GetPlayer(source)
+    elseif FrameWork == 'esx' then
+        return ESX.GetPlayerFromId(source)
+    end
+    return nil
+end
+
+local function GetCitizenID(player)
+    if FrameWork == 'qb' then
+        return player.PlayerData.citizenid
+    elseif FrameWork == 'esx' then
+        return player.identifier
+    end
+    return nil
+end
+
 function DebugPrint(...)
     if Config.DebugMode then
         print(...)
@@ -35,10 +53,12 @@ AddEventHandler('onResourceStart', function(resourceName)
         if FrameWork == "esx" then
             for _, playerId in ipairs(GetPlayers()) do
                 LoadPlayerDiseases(playerId)
+                TriggerEvent('addiction:load', playerId)
             end
         elseif FrameWork == "qb" then
             for _, playerId in ipairs(QBCore.Functions.GetPlayers()) do
                 LoadPlayerDiseases(playerId)
+                TriggerEvent('addiction:load', playerId)
             end
         end
     end
@@ -78,6 +98,7 @@ if GetResourceState('es_extended') == 'started' then
     AddEventHandler('esx:playerLoaded', function(source)
         local playerId = source
         LoadPlayerDiseases(playerId)
+        TriggerEvent('addiction:load', playerId)
     end)
 end
 
@@ -85,6 +106,7 @@ if GetResourceState('qb-core') == 'started' then
     AddEventHandler('QBCore:Server:PlayerLoaded', function(source)
         local playerId = source
         LoadPlayerDiseases(playerId)
+        TriggerEvent('addiction:load', playerId)
     end)
 end
 
@@ -400,26 +422,6 @@ end, true)
 local recoveryCooldowns = {}
 local treatmentProgress = {}
 
--- Helper functions
-local function GetPlayer(source)
-    if FrameWork == 'qb' then
-        return QBCore.Functions.GetPlayer(source)
-    elseif FrameWork == 'esx' then
-        return ESX.GetPlayerFromId(source)
-    end
-    return nil
-end
-
-local function GetCitizenID(player)
-    if FrameWork == 'qb' then
-        return player.PlayerData.citizenid
-    elseif FrameWork == 'esx' then
-        return player.identifier
-    end
-    return nil
-end
-
--- Obtener nivel de adicción
 exports('GetAddictionLevel', function(source, item)
     local src = source
     local Player = GetPlayer(src)
@@ -431,9 +433,8 @@ exports('GetAddictionLevel', function(source, item)
     return result[1] and result[1].level or 0
 end)
 
--- Cargar adicciones al conectar
-RegisterNetEvent('addiction:load', function()
-    local src = source
+RegisterNetEvent('addiction:load', function(playerId)
+    local src = playerId or source
     local Player = GetPlayer(src)
     if not Player then return end
     
@@ -448,7 +449,6 @@ RegisterNetEvent('addiction:load', function()
     TriggerClientEvent('addiction:update', src, addictions)
 end)
 
--- Uso de ítem
 RegisterNetEvent('addiction:useItem', function(item)
     local src = source
     exports['muhaddil_infections']:IncreaseAddiction(src, item, 10)
@@ -458,7 +458,6 @@ RegisterCommand('sumarAdiccion', function (source, args, rawCommand)
     exports['muhaddil_infections']:IncreaseAddiction(source, args[1], tonumber(args[2]))
 end, true)
 
--- Export para aumentar adicción
 exports('IncreaseAddiction', function(source, item, amount)
     local Player = GetPlayer(source)
     if not Player then return false end
@@ -475,7 +474,6 @@ exports('IncreaseAddiction', function(source, item, amount)
     return true
 end)
 
--- Función de recuperación
 RegisterNetEvent('addiction:recover', function(item)
     local src = source
     local Player = GetPlayer(src)
@@ -489,7 +487,6 @@ RegisterNetEvent('addiction:recover', function(item)
         return
     end
 
-    -- Verificar cooldown
     if recoveryCooldowns[citizenid] and recoveryCooldowns[citizenid][item] then
         if os.time() < recoveryCooldowns[citizenid][item] then
             TriggerClientEvent('addiction:notify', src, 'Debes esperar '..GetCooldownText(recoveryCooldowns[citizenid][item])..' para otro tratamiento')
@@ -497,25 +494,20 @@ RegisterNetEvent('addiction:recover', function(item)
         end
     end
 
-    -- Calcular reducción progresiva
     local reduction = CalculateProgressiveReduction(currentLevel)
     local newLevel = math.max(currentLevel - reduction, 0)
     
-    -- Actualizar progreso
     treatmentProgress[citizenid] = treatmentProgress[citizenid] or {}
     treatmentProgress[citizenid][item] = (treatmentProgress[citizenid][item] or 0) + reduction
 
-    -- Si se supera el 75% de reducción, reiniciar progreso
     if treatmentProgress[citizenid][item] >= currentLevel * 0.75 then
         newLevel = 0
         treatmentProgress[citizenid][item] = nil
         TriggerClientEvent('addiction:notify', src, '¡Desintoxicación completa!')
     else
-        -- Actualizar base de datos
         MySQL.update('UPDATE addictions SET level = ? WHERE citizenid = ? AND item = ?', 
             {newLevel, citizenid, item})
         
-        -- Establecer cooldown
         SetCooldown(citizenid, item)
         TriggerClientEvent('addiction:notify', src, string.format('Reducción de adicción: -%d%%, Nivel actual: %d', 
             math.floor((reduction/currentLevel)*100), newLevel))
@@ -524,14 +516,12 @@ RegisterNetEvent('addiction:recover', function(item)
     TriggerClientEvent('addiction:update', src, exports['addictions']:GetPlayerAddictions(citizenid))
 end)
 
--- Función para calcular reducción progresiva
 function CalculateProgressiveReduction(currentLevel)
     local cfg = Config.AddictionRecovery
     local reduction = cfg.base_reduction * math.round(currentLevel / cfg.max_level, cfg.exponent) * currentLevel
     return math.max(math.min(reduction, cfg.max_reduction), cfg.min_reduction)
 end
 
--- Sistema de cooldown
 function SetCooldown(citizenid, item)
     recoveryCooldowns[citizenid] = recoveryCooldowns[citizenid] or {}
     recoveryCooldowns[citizenid][item] = os.time() + (Config.AddictionRecovery.cooldown * 60)
@@ -546,7 +536,6 @@ function GetCooldownText(cooldownTime)
     end
 end
 
--- Obtener todas las adicciones
 exports('GetPlayerAddictions', function(citizenid)
     local result = MySQL.query.await('SELECT item, level FROM addictions WHERE citizenid = ?', {citizenid})
     local addictions = {}
