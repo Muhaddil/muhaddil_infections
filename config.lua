@@ -166,7 +166,7 @@ Config.TiempoChequeoContagio = 5 -- Time in seconds before checking for contagio
 Config.FrameWork = 'auto'        -- Framework being used (auto, esx or qb)
 Config.AutoRunSQL = false        -- Automatically runs the necessary SQL
 Config.AutoVersionChecker = true -- Automatically check for updates
-Config.DebugMode = true          -- Debug mode (false = off)
+Config.DebugMode = false          -- Debug mode (false = off)
 Config.UseOXNotifications = true -- If the script uses the ox_libs notifications or framework ones
 Config.ShowNotifications = true  -- Show notifications (false = off)
 

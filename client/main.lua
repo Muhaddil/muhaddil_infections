@@ -894,8 +894,9 @@ if Config.EnableAddictions then
         ResetPedMovementClipset(PlayerPedId(), 0.25)
     end
 
-    RegisterCommand('stopEffects', function(source, args, rawCommand)
-        exports['muhaddil_infections']:StopAllEffects()
-    end, false)
-
+    if Config.DebugMode then
+        RegisterCommand('stopEffects', function(source, args, rawCommand)
+            exports['muhaddil_infections']:StopAllEffects()
+        end, false)
+    end
 end
