@@ -1,6 +1,6 @@
 local currentVersion = GetResourceMetadata(GetCurrentResourceName(), 'version')
 local resourceName = GetCurrentResourceName()
-local githubApiUrl = 'https://api.github.com/repos/' .. resourceName .. '/releases/latest'
+local githubApiUrl = 'https://api.github.com/repos/Muhaddil/' .. resourceName .. '/releases/latest'
 
 local function daysAgo(dateStr)
     local year, month, day = dateStr:match("(%d+)-(%d+)-(%d+)")
