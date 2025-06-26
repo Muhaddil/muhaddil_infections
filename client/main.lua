@@ -119,7 +119,7 @@ Citizen.CreateThread(function()
         DebugPrint('Tiempo en agua: ' .. tiempoEnAgua)
 
         if EstaEnAgua() then
-            tiempoEnAgua = tiempoEnAgua + 10
+            tiempoEnAgua = tiempoEnAgua + 1
             enAgua = true
         else
             tiempoEnAgua = 0
